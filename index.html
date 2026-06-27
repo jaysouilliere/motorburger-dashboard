@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Motorburger — Live Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  :root {
+    --bg: #0f0f0f; --surface: #1a1a1a; --surface2: #222222;
+    --border: #2e2e2e; --text: #f0ede8; --muted: #888680;
+    --accent: #e8471a; --accent2: #f5a623; --green: #27c484;
+    --red: #e34948; --blue: #4a8fe8;
+    --font: -apple-system, 'SF Pro Display', 'Helvetica Neue', sans-serif;
+    --radius: 12px; --radius-sm: 8px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: var(--font); min-height: 100vh; -webkit-font-smoothing: antialiased; }
+
+  .header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+  .logo { display: flex; align-items: center; gap: 10px; }
+  .logo-mark { width: 32px; height: 32px; background: var(--accent); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 700; color: white; }
+  .logo-name { font-size: 15px; font-weight: 600; }
+  .logo-sub { font-size: 11px; color: var(--muted); }
+  .refresh-btn { background: var(--accent); color: white; border: none; border-radius: var(--radius-sm); padding: 8px 16px; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .refresh-btn:active { opacity: 0.8; }
+  .refresh-btn:disabled { opacity: 0.5; }
+
+  .date-bar { background: var(--surface); border-bottom: 1px solid var(--border); padding: 10px 16px; display: flex; gap: 8px; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+  .date-bar::-webkit-scrollbar { display: none; }
+  .chip { background: var(--surface2); border: 1px solid var(--border); border-radius: 20px; padding: 6px 14px; font-size: 12px; font-weight: 500; color: var(--muted); cursor: pointer; white-space: nowrap; flex-shrink: 0; -webkit-tap-highlight-color: transparent; }
+  .chip.active { background: var(--accent); border-color: var(--accent); color: white; }
+
+  .main { padding: 14px 14px 60px; max-width: 680px; margin: 0 auto; }
+
+  .status { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 14px; font-size: 12px; color: var(--muted); margin-bottom: 14px; display: flex; align-items: center; gap: 6px; }
+  .sdot { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
+  .sdot.live { background: var(--green); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1}50%{opacity:0.4} }
+
+  .kpi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+  .kpi { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; }
+  .kpi.full { grid-column: 1/-1; }
+  .kpi.hi { border-color: var(--accent); }
+  .kpi-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; }
+  .kpi-val { font-size: 28px; font-weight: 700; letter-spacing: -1px; line-height: 1; }
+  .kpi-val.g { color: var(--green); }
+  .kpi-val.r { color: var(--red); }
+  .kpi-val.a { color: var(--accent2); }
+  .kpi-sub { font-size: 11px; color: var(--muted); margin-top: 5px; line-height: 1.4; }
+
+  .ann-bar-track { background: var(--surface2); border-radius: 4px; height: 8px; margin: 8px 0 5px; overflow: hidden; }
+  .ann-bar-fill { height: 100%; border-radius: 4px; background: linear-gradient(90deg, var(--accent), var(--accent2)); }
+  .ann-labels { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); }
+
+  .sec { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 18px 0 10px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+
+  .flag { border-radius: var(--radius-sm); padding: 12px 14px; margin-bottom: 8px; font-size: 13px; line-height: 1.5; display: flex; gap: 10px; }
+  .flag.warn { background: rgba(245,166,35,0.1); border: 1px solid rgba(245,166,35,0.25); }
+  .flag.danger { background: rgba(227,73,72,0.1); border: 1px solid rgba(227,73,72,0.25); }
+  .flag.ok { background: rgba(39,196,132,0.1); border: 1px solid rgba(39,196,132,0.25); }
+  .flag-icon { font-size: 16px; flex-shrink: 0; }
+  .flag-text b { font-weight: 600; display: block; margin-bottom: 2px; }
+
+  .chart-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; margin-bottom: 10px; }
+  .chart-title { font-size: 12px; color: var(--muted); margin-bottom: 10px; }
+  .chart-wrap { position: relative; width: 100%; }
+
+  .item-row { display: flex; align-items: center; gap: 8px; padding: 9px 0; border-bottom: 1px solid var(--border); }
+  .item-row:last-child { border-bottom: none; }
+  .item-name { font-size: 13px; flex: 1; }
+  .item-bar-wrap { width: 70px; }
+  .item-bar-track { background: var(--surface2); border-radius: 3px; height: 5px; }
+  .item-bar-fill { height: 5px; border-radius: 3px; background: var(--accent); }
+  .item-qty { font-size: 13px; font-weight: 600; width: 36px; text-align: right; }
+  .item-rev { font-size: 11px; color: var(--muted); width: 52px; text-align: right; }
+
+  .dow-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .dow-table th { text-align: left; color: var(--muted); font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; padding: 0 0 8px; border-bottom: 1px solid var(--border); }
+  .dow-table th:not(:first-child) { text-align: right; }
+  .dow-table td { padding: 9px 0; border-bottom: 1px solid var(--border); }
+  .dow-table td:not(:first-child) { text-align: right; }
+  .dow-table tr:last-child td { border-bottom: none; }
+  .pos { color: var(--green); font-size: 11px; }
+  .neg { color: var(--red); font-size: 11px; }
+
+  .err-card { background: rgba(227,73,72,0.1); border: 1px solid rgba(227,73,72,0.3); border-radius: var(--radius); padding: 20px; text-align: center; color: var(--red); font-size: 14px; line-height: 1.7; }
+  .err-card b { display: block; font-size: 16px; margin-bottom: 8px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">
+    <div class="logo-mark">M</div>
+    <div>
+      <div class="logo-name">Motorburger</div>
+      <div class="logo-sub">Detroit Shipping Company</div>
+    </div>
+  </div>
+  <button class="refresh-btn" id="refresh-btn" onclick="loadData()">↻ Refresh</button>
+</div>
+
+<div class="date-bar">
+  <div class="chip active" onclick="setRange(7,this)">Last 7 days</div>
+  <div class="chip" onclick="setRange(14,this)">14 days</div>
+  <div class="chip" onclick="setRange(30,this)">30 days</div>
+  <div class="chip" onclick="setRange(90,this)">90 days</div>
+  <div class="chip" onclick="setRange(180,this)">6 months</div>
+  <div class="chip" onclick="setRange(365,this)">Full year</div>
+</div>
+
+<div class="main">
+  <div class="status" id="status">
+    <div class="sdot" id="sdot"></div>
+    <span id="stext">Loading...</span>
+  </div>
+  <div id="content"></div>
+</div>
+
+<script>
+const BENCHMARKS = { Tuesday:368, Wednesday:404, Thursday:581, Friday:1238, Saturday:2568, Sunday:1796 };
+const ANNUAL_TARGET = 352725;
+const BURGER_KW = ['classic motor','firebird',"flyin'",'flyin hawaiian','deux chev','lamborghini','fungu','veg engine','go-kart','go kart'];
+const DRINK_KW = ['coca-cola','jarritos','voss'];
+
+let currentDays = 7;
+let chart1 = null;
+
+function setRange(days, el) {
+  currentDays = days;
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  loadData();
+}
+
+function getDayName(dateStr) {
+  return ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][new Date(dateStr + 'T12:00:00').getDay()];
+}
+function fmt(n) { return '$' + Math.round(n).toLocaleString(); }
+function fmtD(n) { return '$' + Number(n).toFixed(2); }
+
+function processOrders(orders) {
+  const byDate = {}, items = {};
+  let rev = 0, proteins = 0, drinks = 0;
+  const gkByDate = {};
+
+  (orders || []).forEach(o => {
+    const date = o.created_at.substring(0, 10);
+    if (!byDate[date]) byDate[date] = { gross: 0, proteins: 0, drinks: 0, gokart: 0 };
+    const gross = (o.total_money?.amount || 0) / 100;
+    byDate[date].gross += gross;
+    rev += gross;
+
+    (o.line_items || []).forEach(li => {
+      const name = (li.name || '').toLowerCase();
+      const qty = parseInt(li.quantity || 1);
+      const g = (li.gross_sales_money?.amount || 0) / 100;
+      const dn = li.name || 'Unknown';
+      if (!items[dn]) items[dn] = { qty: 0, gross: 0 };
+      items[dn].qty += qty; items[dn].gross += g;
+      if (BURGER_KW.some(k => name.includes(k))) { byDate[date].proteins += qty; byDate[date].gross; proteins += qty; }
+      if (DRINK_KW.some(k => name.includes(k))) { byDate[date].drinks += qty; drinks += qty; }
+      if (name.includes('go-kart') || name.includes('go kart')) {
+        byDate[date].gokart += qty;
+        gkByDate[date] = (gkByDate[date] || 0) + qty;
+      }
+    });
+  });
+  return { byDate, items, rev, proteins, drinks, gkByDate };
+}
+
+function buildFlags(byDate, proteins, drinks, gkByDate) {
+  const flags = [];
+  const attach = proteins > 0 ? drinks / proteins * 100 : 0;
+  if (attach < 25) flags.push({ type:'danger', icon:'🧃', title:`Drink attach: ${attach.toFixed(1)}%`, body:`Low — target 35%+. Prompt every customer at counter.` });
+  else if (attach < 35) flags.push({ type:'warn', icon:'🧃', title:`Drink attach: ${attach.toFixed(1)}%`, body:`Getting there — target 35%+. Keep prompting.` });
+  else flags.push({ type:'ok', icon:'🧃', title:`Drink attach: ${attach.toFixed(1)}%`, body:`Strong — staff are prompting well.` });
+
+  Object.entries(gkByDate).filter(([,q]) => q > 15).forEach(([date, qty]) => {
+    const loss = Math.max(0, qty - 8) * 3;
+    flags.push({ type:'danger', icon:'⚠️', title:`Go-Kart anomaly: ${date}`, body:`${qty} Go-Karts (avg 4–8). Est. ~$${loss} lost revenue from mischarged Classics. Retrain cashier.` });
+  });
+
+  const best = Object.entries(byDate).sort((a,b) => b[1].gross - a[1].gross)[0];
+  if (best && best[1].gross > 3000) flags.push({ type:'ok', icon:'🔥', title:`Big day: ${best[0]}`, body:`${fmt(best[1].gross)} — ${best[1].proteins} proteins${best[1].gross > 4000 ? ' — record territory!' : ''}` });
+
+  return flags;
+}
+
+function renderRevenueChart(byDate) {
+  const dates = Object.keys(byDate).sort().slice(-21);
+  const vals = dates.map(d => Math.round(byDate[d].gross));
+  const cols = dates.map(d => {
+    const day = getDayName(d);
+    return day==='Saturday'?'#27c484':day==='Sunday'?'#4a8fe8':day==='Friday'?'#f5a623':'#e8471a';
+  });
+  const ctx = document.getElementById('rev-chart');
+  if (!ctx) return;
+  if (chart1) chart1.destroy();
+  chart1 = new Chart(ctx, {
+    type: 'bar',
+    data: { labels: dates.map(d => d.slice(5)), datasets: [{ data: vals, backgroundColor: cols, borderRadius: 5, borderSkipped: false }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend:{display:false}, tooltip:{ callbacks:{ title: i => `${getDayName(dates[i[0].dataIndex])}, ${dates[i[0].dataIndex]}`, label: i => `${fmt(i.raw)}` }, backgroundColor:'#1a1a1a', titleColor:'#f0ede8', bodyColor:'#888680', borderColor:'#2e2e2e', borderWidth:1 }},
+      scales: {
+        x: { ticks:{color:'#888680',font:{size:10},maxRotation:45}, grid:{display:false}, border:{display:false} },
+        y: { ticks:{color:'#888680',font:{size:11},callback:v=>'$'+(v>=1000?(v/1000).toFixed(0)+'k':v)}, grid:{color:'#2e2e2e'}, border:{display:false} }
+      }
+    }
+  });
+}
+
+function render(data, ytdRev) {
+  const { byDate, items, rev, proteins, drinks, gkByDate } = data;
+  const days = Object.keys(byDate).length;
+  const attach = proteins > 0 ? drinks/proteins*100 : 0;
+  const flags = buildFlags(byDate, proteins, drinks, gkByDate);
+
+  // DOW averages
+  const dow = {};
+  Object.entries(byDate).forEach(([date, d]) => {
+    const day = getDayName(date);
+    if (!['Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'].includes(day)) return;
+    if (!dow[day]) dow[day] = [];
+    dow[day].push(d.gross);
+  });
+
+  // Annual tracker
+  const dayOfYear = Math.floor((new Date() - new Date(new Date().getFullYear(), 0, 0)) / 86400000);
+  const pace = (ytdRev / dayOfYear) * 365;
+  const paceVs = pace - ANNUAL_TARGET;
+  const ytdPct = Math.min(100, ytdRev / ANNUAL_TARGET * 100);
+
+  // Proteins list
+  const proteinList = Object.entries(items)
+    .filter(([n]) => BURGER_KW.some(k => n.toLowerCase().includes(k)))
+    .sort((a,b) => b[1].qty - a[1].qty).slice(0,8);
+  const maxQ = proteinList[0]?.[1].qty || 1;
+
+  let h = '';
+
+  // KPIs
+  h += `<div class="kpi-grid">
+    <div class="kpi hi">
+      <div class="kpi-label">Revenue (${currentDays}d)</div>
+      <div class="kpi-val">${fmt(rev)}</div>
+      <div class="kpi-sub">${days} trading days · ${fmt(days>0?rev/days:0)}/day avg</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Proteins sold</div>
+      <div class="kpi-val">${proteins}</div>
+      <div class="kpi-sub">${days>0?(proteins/days).toFixed(1):0} per day avg</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Drink attach</div>
+      <div class="kpi-val ${attach>=35?'g':attach>=25?'a':'r'}">${attach.toFixed(1)}%</div>
+      <div class="kpi-sub">${drinks} drinks · ${proteins} proteins · target 35%+</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Avg ticket</div>
+      <div class="kpi-val">${proteins>0?fmtD(rev/proteins):'$0'}</div>
+      <div class="kpi-sub">revenue per protein</div>
+    </div>
+    <div class="kpi full">
+      <div class="kpi-label">2026 Annual tracker — target ${fmt(ANNUAL_TARGET)}</div>
+      <div class="kpi-val ${paceVs>=0?'g':'r'}">${fmt(ytdRev)} YTD</div>
+      <div class="ann-bar-track"><div class="ann-bar-fill" style="width:${ytdPct.toFixed(1)}%"></div></div>
+      <div class="ann-labels">
+        <span>${ytdPct.toFixed(1)}% of target</span>
+        <span>Pace: ${fmt(pace)}/yr <span class="${paceVs>=0?'pos':'neg'}">(${paceVs>=0?'+':''}${fmt(paceVs)} vs target)</span></span>
+      </div>
+    </div>
+  </div>`;
+
+  // Flags
+  if (flags.length) {
+    h += `<div class="sec">Flags & Alerts</div>`;
+    flags.forEach(f => {
+      h += `<div class="flag ${f.type}"><div class="flag-icon">${f.icon}</div><div class="flag-text"><b>${f.title}</b>${f.body}</div></div>`;
+    });
+  }
+
+  // Revenue chart
+  h += `<div class="sec">Daily Revenue</div>
+  <div class="chart-card">
+    <div class="chart-title"><span style="color:#27c484">■</span> Sat &nbsp;<span style="color:#4a8fe8">■</span> Sun &nbsp;<span style="color:#f5a623">■</span> Fri &nbsp;<span style="color:#e8471a">■</span> Weekday</div>
+    <div class="chart-wrap" style="height:180px"><canvas id="rev-chart"></canvas></div>
+  </div>`;
+
+  // DOW vs benchmark
+  h += `<div class="sec">Day of Week vs Benchmark</div><div class="chart-card"><table class="dow-table"><thead><tr><th>Day</th><th>This period</th><th>Benchmark</th><th>Diff</th></tr></thead><tbody>`;
+  ['Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'].forEach(day => {
+    const vals = dow[day];
+    const bench = BENCHMARKS[day];
+    if (vals?.length) {
+      const avg = vals.reduce((a,b)=>a+b,0)/vals.length;
+      const pct = ((avg/bench-1)*100).toFixed(0);
+      h += `<tr><td>${day.substring(0,3)}</td><td>${fmt(avg)}</td><td style="color:var(--muted)">${fmt(bench)}</td><td><span class="${avg>=bench?'pos':'neg'}">${avg>=bench?'+':''}${pct}%</span></td></tr>`;
+    }
+  });
+  h += `</tbody></table></div>`;
+
+  // Protein mix
+  h += `<div class="sec">Protein Mix</div><div class="chart-card">`;
+  if (proteinList.length) {
+    proteinList.forEach(([name, d]) => {
+      const pct = (d.qty/maxQ*100).toFixed(0);
+      h += `<div class="item-row"><div class="item-name">${name}</div><div class="item-bar-wrap"><div class="item-bar-track"><div class="item-bar-fill" style="width:${pct}%"></div></div></div><div class="item-qty">${d.qty}</div><div class="item-rev">${fmt(d.gross)}</div></div>`;
+    });
+  } else {
+    h += `<div style="color:var(--muted);font-size:13px;padding:8px 0">No protein data in range</div>`;
+  }
+  h += `</div>`;
+
+  document.getElementById('content').innerHTML = h;
+  setTimeout(() => renderRevenueChart(byDate), 50);
+}
+
+async function loadData() {
+  const btn = document.getElementById('refresh-btn');
+  const sdot = document.getElementById('sdot');
+  const stext = document.getElementById('stext');
+  btn.disabled = true; btn.textContent = 'Loading...';
+  sdot.className = 'sdot'; stext.textContent = 'Fetching Square data...';
+
+  try {
+    const res = await fetch(`/.netlify/functions/square-proxy?days=${currentDays}`);
+    if (!res.ok) {
+      const err = await res.text();
+      throw new Error(err);
+    }
+    const payload = await res.json();
+    if (payload.error) throw new Error(payload.error);
+
+    const data = processOrders(payload.orders);
+    const ytdData = processOrders(payload.ytdOrders);
+
+    const now = new Date();
+    sdot.className = 'sdot live';
+    stext.textContent = `Live · Updated ${now.toLocaleDateString('en-US',{month:'short',day:'numeric'})} at ${now.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})} · ${(payload.orders||[]).length} orders`;
+
+    render(data, ytdData.rev);
+  } catch(err) {
+    sdot.className = 'sdot'; stext.textContent = 'Error — tap Refresh to retry';
+    document.getElementById('content').innerHTML = `<div class="err-card"><b>Couldn't load data</b>${err.message}<br><br>Check your internet connection and try refreshing.</div>`;
+  }
+
+  btn.disabled = false; btn.textContent = '↻ Refresh';
+}
+
+loadData();
+</script>
+</body>
+</html>
