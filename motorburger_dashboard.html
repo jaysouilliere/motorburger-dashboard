@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Motorburger — Live Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  :root {
+    --bg: #0f0f0f;
+    --surface: #1a1a1a;
+    --surface2: #222222;
+    --border: #2e2e2e;
+    --text: #f0ede8;
+    --muted: #888680;
+    --accent: #e8471a;
+    --accent2: #f5a623;
+    --green: #27c484;
+    --red: #e34948;
+    --blue: #4a8fe8;
+    --font-display: -apple-system, 'SF Pro Display', 'Helvetica Neue', sans-serif;
+    --radius: 12px;
+    --radius-sm: 8px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-display);
+    min-height: 100vh;
+    padding: 0;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Header */
+  .header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .header-logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .logo-mark {
+    width: 32px;
+    height: 32px;
+    background: var(--accent);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    font-weight: 700;
+    color: white;
+    letter-spacing: -0.5px;
+  }
+
+  .logo-text {
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: -0.3px;
+    color: var(--text);
+  }
+
+  .logo-sub {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 1px;
+  }
+
+  .refresh-btn {
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: var(--radius-sm);
+    padding: 8px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .refresh-btn:active { opacity: 0.8; }
+  .refresh-btn.loading { opacity: 0.6; pointer-events: none; }
+
+  /* Date range selector */
+  .date-bar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 20px;
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .date-bar::-webkit-scrollbar { display: none; }
+
+  .date-chip {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--muted);
+    cursor: pointer;
+    white-space: nowrap;
+    -webkit-tap-highlight-color: transparent;
+    flex-shrink: 0;
+  }
+
+  .date-chip.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: white;
+  }
+
+  /* Main content */
+  .main { padding: 16px 16px 40px; max-width: 680px; margin: 0 auto; }
+
+  /* Status bar */
+  .status-bar {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 10px 14px;
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
+  .status-dot.live { background: var(--green); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  /* KPI grid */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  .kpi-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .kpi-card.full { grid-column: 1 / -1; }
+  .kpi-card.accent-card { border-color: var(--accent); }
+
+  .kpi-eyebrow {
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 6px;
+    font-weight: 500;
+  }
+
+  .kpi-value {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: -1px;
+    line-height: 1;
+  }
+
+  .kpi-value.green { color: var(--green); }
+  .kpi-value.red { color: var(--red); }
+  .kpi-value.amber { color: var(--accent2); }
+
+  .kpi-sub {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 5px;
+    line-height: 1.4;
+  }
+
+  .kpi-badge {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 7px;
+    border-radius: 10px;
+    margin-top: 5px;
+  }
+
+  .badge-green { background: rgba(39,196,132,0.15); color: var(--green); }
+  .badge-red { background: rgba(227,73,72,0.15); color: var(--red); }
+  .badge-amber { background: rgba(245,166,35,0.15); color: var(--accent2); }
+
+  /* Flag cards */
+  .flag-card {
+    border-radius: var(--radius-sm);
+    padding: 12px 14px;
+    margin-bottom: 10px;
+    font-size: 13px;
+    line-height: 1.5;
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+  }
+  .flag-card.warn { background: rgba(245,166,35,0.1); border: 1px solid rgba(245,166,35,0.25); color: var(--accent2); }
+  .flag-card.danger { background: rgba(227,73,72,0.1); border: 1px solid rgba(227,73,72,0.25); color: var(--red); }
+  .flag-card.ok { background: rgba(39,196,132,0.1); border: 1px solid rgba(39,196,132,0.25); color: var(--green); }
+  .flag-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+  .flag-text b { font-weight: 600; }
+  .flag-text { color: var(--text); }
+  .flag-text span { color: inherit; opacity: 0.85; }
+
+  /* Section headers */
+  .section-header {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    margin: 20px 0 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* Chart cards */
+  .chart-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 10px;
+  }
+
+  .chart-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 12px;
+  }
+
+  .chart-wrap { position: relative; width: 100%; }
+
+  /* Item list */
+  .item-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .item-row:last-child { border-bottom: none; }
+
+  .item-name { font-size: 13px; color: var(--text); flex: 1; }
+  .item-qty {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    width: 40px;
+    text-align: right;
+  }
+  .item-bar-wrap { width: 80px; }
+  .item-bar-track { background: var(--surface2); border-radius: 3px; height: 5px; }
+  .item-bar-fill { height: 5px; border-radius: 3px; background: var(--accent); }
+  .item-revenue { font-size: 11px; color: var(--muted); width: 55px; text-align: right; }
+
+  /* DOW table */
+  .dow-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .dow-table th {
+    text-align: left;
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0 0 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .dow-table th:not(:first-child) { text-align: right; }
+  .dow-table td { padding: 9px 0; border-bottom: 1px solid var(--border); color: var(--text); }
+  .dow-table td:not(:first-child) { text-align: right; }
+  .dow-table tr:last-child td { border-bottom: none; }
+  .vs-pos { color: var(--green); font-size: 11px; }
+  .vs-neg { color: var(--red); font-size: 11px; }
+
+  /* Loading skeleton */
+  .skeleton {
+    background: linear-gradient(90deg, var(--surface2) 25%, var(--border) 50%, var(--surface2) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+    border-radius: 6px;
+  }
+  @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+  /* Error state */
+  .error-card {
+    background: rgba(227,73,72,0.1);
+    border: 1px solid rgba(227,73,72,0.3);
+    border-radius: var(--radius);
+    padding: 20px;
+    text-align: center;
+    color: var(--red);
+    font-size: 14px;
+    line-height: 1.6;
+  }
+  .error-card b { display: block; font-size: 16px; margin-bottom: 8px; }
+
+  /* Annual tracker */
+  .annual-track { margin-top: 8px; }
+  .annual-bar-track {
+    background: var(--surface2);
+    border-radius: 4px;
+    height: 8px;
+    margin: 8px 0 5px;
+    overflow: hidden;
+  }
+  .annual-bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    transition: width 0.8s ease;
+  }
+  .annual-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  /* Responsive */
+  @media (max-width: 380px) {
+    .kpi-value { font-size: 24px; }
+    .main { padding: 12px 12px 40px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-logo">
+    <div class="logo-mark">M</div>
+    <div>
+      <div class="logo-text">Motorburger</div>
+      <div class="logo-sub">Detroit Shipping Company</div>
+    </div>
+  </div>
+  <button class="refresh-btn" onclick="loadData()">
+    <span id="refresh-icon">↻</span> Refresh
+  </button>
+</div>
+
+<div class="date-bar">
+  <div class="date-chip active" onclick="setRange(7, this)">Last 7 days</div>
+  <div class="date-chip" onclick="setRange(14, this)">14 days</div>
+  <div class="date-chip" onclick="setRange(30, this)">30 days</div>
+  <div class="date-chip" onclick="setRange(90, this)">90 days</div>
+  <div class="date-chip" onclick="setRange(180, this)">6 months</div>
+  <div class="date-chip" onclick="setRange(365, this)">Full year</div>
+</div>
+
+<div class="main">
+  <div id="status-bar" class="status-bar">
+    <div class="status-dot" id="status-dot"></div>
+    <span id="status-text">Loading Square data...</span>
+  </div>
+
+  <div id="content">
+    <!-- Populated by JS -->
+  </div>
+</div>
+
+<script>
+const TOKEN = "EAAAl_7XNlzckS109DHtg4ACso_JRt6A1ZggKoHAYZGsIDMmBhlGK3y8Vxps6W-7";
+const LOCATION_ID = "SHYN03HRSA80K";
+const BASE_URL = "https://connect.squareup.com/v2";
+
+// Benchmarks from briefing
+const BENCHMARKS = {
+  Tuesday: 368, Wednesday: 404, Thursday: 581,
+  Friday: 1238, Saturday: 2568, Sunday: 1796
+};
+const ANNUAL_TARGET = 352725;
+
+const BURGER_KEYWORDS = ['classic motor', 'firebird', "flyin'", 'flyin hawaiian', 'deux chev', 'lamborghini', 'fungu', 'veg engine', 'go-kart', 'go kart'];
+const DRINK_KEYWORDS = ['coca-cola', 'jarritos', 'voss'];
+
+let currentDays = 7;
+let revenueChart = null;
+
+function setRange(days, el) {
+  currentDays = days;
+  document.querySelectorAll('.date-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  loadData();
+}
+
+function getDateRange(days) {
+  const end = new Date();
+  const start = new Date();
+  start.setDate(start.getDate() - days);
+  return {
+    start: start.toISOString().split('T')[0] + 'T00:00:00.000Z',
+    end: end.toISOString().split('T')[0] + 'T23:59:59.999Z'
+  };
+}
+
+function getDayName(dateStr) {
+  const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  return days[new Date(dateStr + 'T12:00:00').getDay()];
+}
+
+function fmt(n) { return '$' + Math.round(n).toLocaleString(); }
+function fmtD(n) { return '$' + n.toFixed(2); }
+
+async function squareGet(path) {
+  const r = await fetch(BASE_URL + path, {
+    headers: { 'Authorization': `Bearer ${TOKEN}`, 'Square-Version': '2024-01-18', 'Content-Type': 'application/json' }
+  });
+  if (!r.ok) throw new Error(`Square API error: ${r.status}`);
+  return r.json();
+}
+
+async function fetchOrders(startDate, endDate, cursor = null) {
+  const body = {
+    location_ids: [LOCATION_ID],
+    query: {
+      filter: {
+        date_time_filter: {
+          created_at: { start_at: startDate, end_at: endDate }
+        },
+        state_filter: { states: ['COMPLETED'] }
+      },
+      sort: { sort_field: 'CREATED_AT', sort_order: 'ASC' }
+    },
+    limit: 500
+  };
+  if (cursor) body.cursor = cursor;
+
+  const r = await fetch(BASE_URL + '/orders/search', {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${TOKEN}`, 'Square-Version': '2024-01-18', 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  if (!r.ok) {
+    const err = await r.text();
+    throw new Error(`Orders API ${r.status}: ${err.substring(0, 200)}`);
+  }
+  return r.json();
+}
+
+async function getAllOrders(startDate, endDate) {
+  let all = [], cursor = null, page = 0;
+  do {
+    const data = await fetchOrders(startDate, endDate, cursor);
+    if (data.orders) all = all.concat(data.orders);
+    cursor = data.cursor;
+    page++;
+    if (page > 20) break;
+  } while (cursor);
+  return all;
+}
+
+function processOrders(orders) {
+  const byDate = {};
+  const itemTotals = {};
+  let totalRevenue = 0, totalProteins = 0, totalDrinks = 0;
+  let gokartByDate = {};
+
+  orders.forEach(order => {
+    const date = order.created_at.substring(0, 10);
+    if (!byDate[date]) byDate[date] = { gross: 0, proteins: 0, drinks: 0, gokart: 0 };
+
+    const gross = (order.total_money?.amount || 0) / 100;
+    byDate[date].gross += gross;
+    totalRevenue += gross;
+
+    (order.line_items || []).forEach(item => {
+      const name = (item.name || '').toLowerCase();
+      const qty = parseInt(item.quantity || 1);
+      const itemGross = (item.gross_sales_money?.amount || 0) / 100;
+      const displayName = item.name || 'Unknown';
+
+      // Track item totals
+      if (!itemTotals[displayName]) itemTotals[displayName] = { qty: 0, gross: 0 };
+      itemTotals[displayName].qty += qty;
+      itemTotals[displayName].gross += itemGross;
+
+      // Proteins
+      if (BURGER_KEYWORDS.some(k => name.includes(k))) {
+        byDate[date].proteins += qty;
+        totalProteins += qty;
+      }
+
+      // Drinks
+      if (DRINK_KEYWORDS.some(k => name.includes(k))) {
+        byDate[date].drinks += qty;
+        totalDrinks += qty;
+      }
+
+      // Go-Kart
+      if (name.includes('go-kart') || name.includes('go kart')) {
+        byDate[date].gokart += qty;
+        if (!gokartByDate[date]) gokartByDate[date] = 0;
+        gokartByDate[date] += qty;
+      }
+    });
+  });
+
+  return { byDate, itemTotals, totalRevenue, totalProteins, totalDrinks, gokartByDate };
+}
+
+function buildDOWAverages(byDate) {
+  const dowData = {};
+  Object.entries(byDate).forEach(([date, data]) => {
+    const day = getDayName(date);
+    if (!['Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'].includes(day)) return;
+    if (!dowData[day]) dowData[day] = { revenue: [], proteins: [], days: 0 };
+    dowData[day].revenue.push(data.gross);
+    dowData[day].proteins.push(data.proteins);
+    dowData[day].days++;
+  });
+  return dowData;
+}
+
+function buildFlags(byDate, totalProteins, totalDrinks, gokartByDate) {
+  const flags = [];
+  const dates = Object.keys(byDate).sort();
+
+  // Drink attach rate
+  if (totalProteins > 0) {
+    const attachRate = (totalDrinks / totalProteins) * 100;
+    if (attachRate < 25) {
+      flags.push({ type: 'danger', icon: '🧃', title: `Drink attach: ${attachRate.toFixed(1)}%`, body: `Low — target 35%+. At current protein volume, each 10% improvement = ~$${Math.round(totalProteins * 0.1 * 4.72 / dates.length * 7)} extra/week.` });
+    } else if (attachRate < 35) {
+      flags.push({ type: 'warn', icon: '🧃', title: `Drink attach: ${attachRate.toFixed(1)}%`, body: `Improving but below target of 35%+. Keep prompting at counter.` });
+    } else {
+      flags.push({ type: 'ok', icon: '🧃', title: `Drink attach: ${attachRate.toFixed(1)}%`, body: `Strong — staff are prompting well.` });
+    }
+  }
+
+  // Go-Kart anomaly check
+  const gkDates = Object.entries(gokartByDate).filter(([d, qty]) => qty > 15);
+  if (gkDates.length > 0) {
+    gkDates.forEach(([date, qty]) => {
+      const est_mischarge = Math.max(0, qty - 8);
+      const revenue_loss = est_mischarge * 3;
+      flags.push({ type: 'danger', icon: '⚠️', title: `Go-Kart anomaly: ${date}`, body: `${qty} Go-Karts sold (avg ~4–8). Est. ${est_mischarge} mischarged Classics = ~$${revenue_loss} lost revenue. Retrain cashier on modifier use.` });
+    });
+  }
+
+  // Best day flag
+  const bestDay = Object.entries(byDate).sort((a,b) => b[1].gross - a[1].gross)[0];
+  if (bestDay && bestDay[1].gross > 3000) {
+    flags.push({ type: 'ok', icon: '🔥', title: `Big day: ${bestDay[0]}`, body: `${fmt(bestDay[1].gross)} — ${bestDay[1].proteins} proteins. ${bestDay[1].gross > 4000 ? 'Record territory!' : 'Strong performance.'}` });
+  }
+
+  return flags;
+}
+
+function renderChart(byDate) {
+  const dates = Object.keys(byDate).sort().slice(-14); // last 14 days max
+  const revenues = dates.map(d => Math.round(byDate[d].gross));
+  const colors = dates.map(d => {
+    const day = getDayName(d);
+    return day === 'Saturday' ? '#27c484' : day === 'Sunday' ? '#4a8fe8' : day === 'Friday' ? '#f5a623' : '#e8471a';
+  });
+
+  const ctx = document.getElementById('revenue-chart');
+  if (!ctx) return;
+
+  if (revenueChart) revenueChart.destroy();
+
+  revenueChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: dates.map(d => {
+        const parts = d.split('-');
+        return `${parts[1]}/${parts[2]}`;
+      }),
+      datasets: [{
+        data: revenues,
+        backgroundColor: colors,
+        borderRadius: 6,
+        borderSkipped: false
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            title: (items) => {
+              const date = dates[items[0].dataIndex];
+              return `${getDayName(date)}, ${date}`;
+            },
+            label: (item) => `Revenue: $${item.raw.toLocaleString()}`
+          },
+          backgroundColor: '#1a1a1a',
+          titleColor: '#f0ede8',
+          bodyColor: '#888680',
+          borderColor: '#2e2e2e',
+          borderWidth: 1
+        }
+      },
+      scales: {
+        x: {
+          ticks: { color: '#888680', font: { size: 10 }, maxRotation: 45 },
+          grid: { display: false },
+          border: { display: false }
+        },
+        y: {
+          ticks: { color: '#888680', font: { size: 11 }, callback: v => '$' + (v >= 1000 ? (v/1000).toFixed(0)+'k' : v) },
+          grid: { color: '#2e2e2e' },
+          border: { display: false }
+        }
+      }
+    }
+  });
+}
+
+function renderContent(data, ytdRevenue) {
+  const { byDate, itemTotals, totalRevenue, totalProteins, totalDrinks, gokartByDate } = data;
+  const dates = Object.keys(byDate).sort();
+  const tradingDays = dates.length;
+  const avgPerDay = tradingDays > 0 ? totalRevenue / tradingDays : 0;
+  const attachRate = totalProteins > 0 ? (totalDrinks / totalProteins * 100) : 0;
+  const dowData = buildDOWAverages(byDate);
+  const flags = buildFlags(byDate, totalProteins, totalDrinks, gokartByDate);
+
+  // Annual tracker
+  const now = new Date();
+  const dayOfYear = Math.floor((now - new Date(now.getFullYear(), 0, 0)) / 86400000);
+  const paceAnnual = (ytdRevenue / dayOfYear) * 365;
+  const paceVsTarget = paceAnnual - ANNUAL_TARGET;
+  const ytdPct = Math.min(100, (ytdRevenue / ANNUAL_TARGET) * 100);
+
+  // Top proteins
+  const proteins = Object.entries(itemTotals)
+    .filter(([name]) => BURGER_KEYWORDS.some(k => name.toLowerCase().includes(k)))
+    .sort((a,b) => b[1].qty - a[1].qty)
+    .slice(0, 8);
+  const maxQty = proteins.length > 0 ? proteins[0][1].qty : 1;
+
+  let html = '';
+
+  // KPI grid
+  html += `<div class="kpi-grid">
+    <div class="kpi-card accent-card">
+      <div class="kpi-eyebrow">Revenue (${currentDays}d)</div>
+      <div class="kpi-value">${fmt(totalRevenue)}</div>
+      <div class="kpi-sub">${tradingDays} trading days · ${fmt(avgPerDay)}/day avg</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-eyebrow">Proteins sold</div>
+      <div class="kpi-value">${totalProteins}</div>
+      <div class="kpi-sub">${tradingDays > 0 ? (totalProteins/tradingDays).toFixed(1) : 0} per day avg</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-eyebrow">Drink attach</div>
+      <div class="kpi-value ${attachRate >= 35 ? 'green' : attachRate >= 25 ? 'amber' : 'red'}">${attachRate.toFixed(1)}%</div>
+      <div class="kpi-sub">${totalDrinks} drinks on ${totalProteins} proteins · target 35%+</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-eyebrow">Avg ticket</div>
+      <div class="kpi-value">${totalProteins > 0 ? fmtD(totalRevenue / totalProteins) : '$0'}</div>
+      <div class="kpi-sub">revenue per protein sold</div>
+    </div>
+    <div class="kpi-card full">
+      <div class="kpi-eyebrow">2026 Annual tracker — target ${fmt(ANNUAL_TARGET)}</div>
+      <div class="kpi-value ${paceVsTarget >= 0 ? 'green' : 'red'}">${fmt(ytdRevenue)} YTD</div>
+      <div class="annual-track">
+        <div class="annual-bar-track"><div class="annual-bar-fill" style="width:${ytdPct.toFixed(1)}%"></div></div>
+        <div class="annual-labels">
+          <span>${ytdPct.toFixed(1)}% of target</span>
+          <span>Pace: ${fmt(paceAnnual)}/yr <span class="${paceVsTarget >= 0 ? 'vs-pos' : 'vs-neg'}">(${paceVsTarget >= 0 ? '+' : ''}${fmt(paceVsTarget)} vs target)</span></span>
+        </div>
+      </div>
+    </div>
+  </div>`;
+
+  // Flags
+  if (flags.length > 0) {
+    html += `<div class="section-header">Flags & Alerts</div>`;
+    flags.forEach(f => {
+      html += `<div class="flag-card ${f.type}">
+        <div class="flag-icon">${f.icon}</div>
+        <div class="flag-text"><b>${f.title}</b><br><span>${f.body}</span></div>
+      </div>`;
+    });
+  }
+
+  // Revenue chart
+  html += `<div class="section-header">Daily Revenue</div>
+  <div class="chart-card">
+    <div class="chart-title">
+      <span style="color:#27c484">■</span> Sat &nbsp;
+      <span style="color:#4a8fe8">■</span> Sun &nbsp;
+      <span style="color:#f5a623">■</span> Fri &nbsp;
+      <span style="color:#e8471a">■</span> Weekday
+    </div>
+    <div class="chart-wrap" style="height:180px"><canvas id="revenue-chart"></canvas></div>
+  </div>`;
+
+  // DOW averages vs benchmark
+  html += `<div class="section-header">Day of Week vs Benchmark</div>
+  <div class="chart-card">
+    <table class="dow-table">
+      <thead><tr><th>Day</th><th>Avg Revenue</th><th>Benchmark</th><th>vs Target</th></tr></thead>
+      <tbody>`;
+
+  ['Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'].forEach(day => {
+    const dd = dowData[day];
+    const benchmark = BENCHMARKS[day];
+    if (dd && dd.revenue.length > 0) {
+      const avg = dd.revenue.reduce((a,b) => a+b,0) / dd.revenue.length;
+      const diff = avg - benchmark;
+      const pct = ((avg / benchmark - 1) * 100).toFixed(0);
+      html += `<tr>
+        <td>${day.substring(0,3)}</td>
+        <td>${fmt(avg)}</td>
+        <td style="color:var(--muted)">${fmt(benchmark)}</td>
+        <td><span class="${diff >= 0 ? 'vs-pos' : 'vs-neg'}">${diff >= 0 ? '+' : ''}${pct}%</span></td>
+      </tr>`;
+    }
+  });
+
+  html += `</tbody></table></div>`;
+
+  // Protein mix
+  html += `<div class="section-header">Protein Mix</div>
+  <div class="chart-card">`;
+
+  if (proteins.length > 0) {
+    proteins.forEach(([name, data]) => {
+      const pct = (data.qty / maxQty * 100).toFixed(0);
+      html += `<div class="item-row">
+        <div class="item-name">${name}</div>
+        <div class="item-bar-wrap"><div class="item-bar-track"><div class="item-bar-fill" style="width:${pct}%"></div></div></div>
+        <div class="item-qty">${data.qty}</div>
+        <div class="item-revenue">${fmt(data.gross)}</div>
+      </div>`;
+    });
+  } else {
+    html += `<div style="color:var(--muted);font-size:13px;padding:10px 0">No protein data in this range</div>`;
+  }
+
+  html += `</div>`;
+
+  document.getElementById('content').innerHTML = html;
+
+  // Render chart after DOM update
+  setTimeout(() => renderChart(byDate), 50);
+}
+
+async function loadData() {
+  const btn = document.querySelector('.refresh-btn');
+  const statusDot = document.getElementById('status-dot');
+  const statusText = document.getElementById('status-text');
+  const icon = document.getElementById('refresh-icon');
+
+  btn.classList.add('loading');
+  icon.style.display = 'inline-block';
+  statusDot.className = 'status-dot';
+  statusText.textContent = 'Connecting to Square...';
+
+  try {
+    const { start, end } = getDateRange(currentDays);
+
+    // Also fetch YTD for annual tracker
+    const ytdStart = new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0] + 'T00:00:00.000Z';
+
+    statusText.textContent = 'Fetching orders...';
+
+    const [orders, ytdOrders] = await Promise.all([
+      getAllOrders(start, end),
+      getAllOrders(ytdStart, end)
+    ]);
+
+    statusText.textContent = 'Processing data...';
+
+    const data = processOrders(orders);
+    const ytdData = processOrders(ytdOrders);
+
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    const dateStr = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+    statusDot.className = 'status-dot live';
+    statusText.textContent = `Live data · Updated ${dateStr} at ${timeStr} · ${orders.length} orders loaded`;
+
+    renderContent(data, ytdData.totalRevenue);
+
+  } catch (err) {
+    console.error(err);
+    statusDot.className = 'status-dot';
+    statusText.textContent = 'Error loading data — tap Refresh to retry';
+
+    document.getElementById('content').innerHTML = `
+      <div class="error-card">
+        <b>Couldn't load Square data</b>
+        ${err.message}<br><br>
+        Make sure you're connected to the internet and tap Refresh.
+      </div>`;
+  }
+
+  btn.classList.remove('loading');
+}
+
+// Load on start
+loadData();
+</script>
+</body>
+</html>
