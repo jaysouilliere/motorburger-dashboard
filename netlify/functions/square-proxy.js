@@ -20,6 +20,8 @@ exports.handler = async function (event) {
     veggie: ['veg engine'],
   };
   const DRINK_KW = ['coca-cola','jarritos','voss'];
+  // Items we track inventory for in Square
+  const INVENTORY_ITEMS = ['firebird','lamborghini','veg engine'];
 
   function getDayName(dateStr) {
     return ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][new Date(dateStr + 'T12:00:00').getDay()];
@@ -31,6 +33,75 @@ exports.handler = async function (event) {
       if (kws.some(k => n.includes(k))) return type;
     }
     return null;
+  }
+
+  async function squarePost(path, body) {
+    const r = await fetch(BASE + path, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${TOKEN}`, "Square-Version": "2024-01-18", "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (!r.ok) { const err = await r.text(); throw new Error(`Square ${r.status} ${path}: ${err.substring(0, 200)}`); }
+    return r.json();
+  }
+
+  async function squareGet(path) {
+    const r = await fetch(BASE + path, {
+      headers: { Authorization: `Bearer ${TOKEN}`, "Square-Version": "2024-01-18", "Content-Type": "application/json" },
+    });
+    if (!r.ok) { const err = await r.text(); throw new Error(`Square ${r.status} ${path}: ${err.substring(0, 200)}`); }
+    return r.json();
+  }
+
+  // Get current inventory counts for tracked proteins
+  async function getInventoryCounts() {
+    try {
+      // Step 1: Search catalog for our tracked items
+      const catalogResult = await squarePost('/catalog/search', {
+        object_types: ['ITEM'],
+        query: { text_query: { keywords: INVENTORY_ITEMS } }
+      });
+
+      const items = catalogResult.objects || [];
+      const variationIds = [];
+      const itemNameMap = {}; // variationId -> item name
+
+      items.forEach(item => {
+        const itemName = (item.item_data?.name || '').toLowerCase();
+        const isTracked = INVENTORY_ITEMS.some(k => itemName.includes(k));
+        if (isTracked) {
+          (item.item_data?.variations || []).forEach(v => {
+            variationIds.push(v.id);
+            itemNameMap[v.id] = item.item_data?.name;
+          });
+        }
+      });
+
+      if (variationIds.length === 0) return {};
+
+      // Step 2: Get inventory counts
+      const invResult = await squarePost('/inventory/counts/batch-retrieve', {
+        catalog_object_ids: variationIds,
+        location_ids: [LOCATION_ID],
+      });
+
+      const counts = {};
+      (invResult.counts || []).forEach(c => {
+        if (c.state === 'IN_STOCK') {
+          const name = itemNameMap[c.catalog_object_id] || '';
+          const qty = parseFloat(c.quantity || 0);
+          const nameLower = name.toLowerCase();
+          if (nameLower.includes('firebird')) counts.chicken = (counts.chicken || 0) + qty;
+          else if (nameLower.includes('lamborghini')) counts.lamb = (counts.lamb || 0) + qty;
+          else if (nameLower.includes('veg engine')) counts.veggie = (counts.veggie || 0) + qty;
+        }
+      });
+
+      return counts;
+    } catch (e) {
+      console.error('Inventory fetch failed:', e.message);
+      return {};
+    }
   }
 
   async function fetchOrders(fromDate, toDate, cursor = null) {
@@ -46,13 +117,7 @@ exports.handler = async function (event) {
       limit: 500,
     };
     if (cursor) body.cursor = cursor;
-    const r = await fetch(BASE + "/orders/search", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${TOKEN}`, "Square-Version": "2024-01-18", "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    if (!r.ok) { const err = await r.text(); throw new Error(`Square ${r.status}: ${err.substring(0, 200)}`); }
-    return r.json();
+    return squarePost('/orders/search', body);
   }
 
   async function getAllOrders(fromDate, toDate) {
@@ -116,6 +181,7 @@ exports.handler = async function (event) {
     const dowAvgs = {};
     Object.entries(dow).forEach(([day, d]) => {
       const avg = arr => arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : 0;
+      const recent3avg = arr => arr.length >= 3 ? avg(arr.slice(-3)) : avg(arr);
       dowAvgs[day] = {
         avgRevenue: avg(d.revenue),
         avgProteins: avg(d.proteins),
@@ -127,8 +193,8 @@ exports.handler = async function (event) {
           veggie: avg(d.byType.veggie),
         },
         days: d.revenue.length,
-        // Trend: last 3 vs full avg
-        trend: d.revenue.length >= 3 ? avg(d.revenue.slice(-3)) / avg(d.revenue) : 1,
+        trend: d.revenue.length >= 3 ? recent3avg(d.revenue) / avg(d.revenue) : 1,
+        recentRevenue: d.revenue.slice(-4), // last 4 for display
       };
     });
 
@@ -149,7 +215,6 @@ exports.handler = async function (event) {
     const params = event.queryStringParameters || {};
     const days = parseInt(params.days || "7");
     const isYtd = params.ytd === "true";
-    // For prep: fetch last 90 days to get solid DOW history
     const isPrep = params.prep === "true";
 
     const end = new Date();
@@ -166,13 +231,20 @@ exports.handler = async function (event) {
       startStr = s.toISOString().split("T")[0] + "T00:00:00.000Z";
     }
 
-    const orders = await getAllOrders(startStr, endStr);
+    // For prep mode, also fetch inventory counts in parallel
+    const promises = [getAllOrders(startStr, endStr)];
+    if (isPrep) promises.push(getInventoryCounts());
+
+    const results = await Promise.all(promises);
+    const orders = results[0];
+    const inventory = isPrep ? (results[1] || {}) : {};
+
     const summary = processOrders(orders);
 
     return {
       statusCode: 200,
       headers,
-      body: JSON.stringify({ summary }),
+      body: JSON.stringify({ summary, inventory }),
     };
   } catch (err) {
     return { statusCode: 500, headers, body: JSON.stringify({ error: err.message }) };
