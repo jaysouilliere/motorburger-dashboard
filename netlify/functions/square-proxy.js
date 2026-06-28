@@ -19,7 +19,6 @@ exports.handler = async function (event) {
     lamb: ['lamborghini'],
     veggie: ['veg engine'],
   };
-  const ALL_BURGER_KW = [...PROTEIN_MAP.beef, ...PROTEIN_MAP.chicken, ...PROTEIN_MAP.lamb, ...PROTEIN_MAP.veggie];
   const DRINK_KW = ['coca-cola','jarritos','voss'];
 
   function getDayName(dateStr) {
@@ -75,7 +74,7 @@ exports.handler = async function (event) {
 
     (orders || []).forEach(o => {
       const date = o.created_at.substring(0, 10);
-      if (!byDate[date]) byDate[date] = { gross: 0, proteins: 0, drinks: 0, gokart: 0 };
+      if (!byDate[date]) byDate[date] = { gross: 0, proteins: 0, drinks: 0, gokart: 0, byType: { beef:0, chicken:0, lamb:0, veggie:0 } };
       const gross = (o.total_money?.amount || 0) / 100;
       byDate[date].gross += gross;
       rev += gross;
@@ -91,6 +90,7 @@ exports.handler = async function (event) {
         const ptype = getProteinType(dn);
         if (ptype) {
           byDate[date].proteins += qty;
+          byDate[date].byType[ptype] += qty;
           proteins += qty;
           proteinsByType[ptype] += qty;
         }
@@ -106,17 +106,29 @@ exports.handler = async function (event) {
     Object.entries(byDate).forEach(([date, d]) => {
       const day = getDayName(date);
       if (!['Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'].includes(day)) return;
-      if (!dow[day]) dow[day] = { revenue: [], proteins: [] };
+      if (!dow[day]) dow[day] = { revenue: [], proteins: [], byType: { beef:[], chicken:[], lamb:[], veggie:[] }, drinks: [] };
       dow[day].revenue.push(d.gross);
       dow[day].proteins.push(d.proteins);
+      dow[day].drinks.push(d.drinks);
+      Object.keys(d.byType).forEach(t => dow[day].byType[t].push(d.byType[t]));
     });
 
     const dowAvgs = {};
     Object.entries(dow).forEach(([day, d]) => {
+      const avg = arr => arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : 0;
       dowAvgs[day] = {
-        avgRevenue: d.revenue.reduce((a,b)=>a+b,0)/d.revenue.length,
-        avgProteins: d.proteins.reduce((a,b)=>a+b,0)/d.proteins.length,
-        days: d.revenue.length
+        avgRevenue: avg(d.revenue),
+        avgProteins: avg(d.proteins),
+        avgDrinks: avg(d.drinks),
+        avgByType: {
+          beef: avg(d.byType.beef),
+          chicken: avg(d.byType.chicken),
+          lamb: avg(d.byType.lamb),
+          veggie: avg(d.byType.veggie),
+        },
+        days: d.revenue.length,
+        // Trend: last 3 vs full avg
+        trend: d.revenue.length >= 3 ? avg(d.revenue.slice(-3)) / avg(d.revenue) : 1,
       };
     });
 
@@ -128,7 +140,7 @@ exports.handler = async function (event) {
 
     const dailySummary = Object.entries(byDate)
       .sort((a,b) => a[0].localeCompare(b[0]))
-      .map(([date, d]) => ({ date, gross: Math.round(d.gross), proteins: d.proteins, drinks: d.drinks, gokart: d.gokart }));
+      .map(([date, d]) => ({ date, gross: Math.round(d.gross), proteins: d.proteins, drinks: d.drinks, gokart: d.gokart, byType: d.byType }));
 
     return { rev: Math.round(rev), proteins, drinks, proteinsByType, byDate: dailySummary, dowAvgs, proteinItems, gkByDate, orderCount: orders.length };
   }
@@ -137,18 +149,21 @@ exports.handler = async function (event) {
     const params = event.queryStringParameters || {};
     const days = parseInt(params.days || "7");
     const isYtd = params.ytd === "true";
+    // For prep: fetch last 90 days to get solid DOW history
+    const isPrep = params.prep === "true";
 
     const end = new Date();
-    const start = new Date();
-
     let startStr, endStr;
+    endStr = end.toISOString().split("T")[0] + "T23:59:59.999Z";
+
     if (isYtd) {
       startStr = new Date(new Date().getFullYear(), 0, 1).toISOString().split("T")[0] + "T00:00:00.000Z";
-      endStr = end.toISOString().split("T")[0] + "T23:59:59.999Z";
+    } else if (isPrep) {
+      const s = new Date(); s.setDate(s.getDate() - 90);
+      startStr = s.toISOString().split("T")[0] + "T00:00:00.000Z";
     } else {
-      start.setDate(start.getDate() - days);
-      startStr = start.toISOString().split("T")[0] + "T00:00:00.000Z";
-      endStr = end.toISOString().split("T")[0] + "T23:59:59.999Z";
+      const s = new Date(); s.setDate(s.getDate() - days);
+      startStr = s.toISOString().split("T")[0] + "T00:00:00.000Z";
     }
 
     const orders = await getAllOrders(startStr, endStr);
