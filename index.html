@@ -23,8 +23,9 @@
   .refresh-btn{background:var(--accent);color:white;border:none;border-radius:var(--radius-sm);padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;}
   .refresh-btn:active{opacity:0.8;}
   .refresh-btn:disabled{opacity:0.5;}
-  .tab-bar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 16px;display:flex;}
-  .tab{padding:12px 16px;font-size:13px;font-weight:500;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;-webkit-tap-highlight-color:transparent;}
+  .tab-bar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 16px;display:flex;overflow-x:auto;scrollbar-width:none;}
+  .tab-bar::-webkit-scrollbar{display:none;}
+  .tab{padding:12px 14px;font-size:13px;font-weight:500;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;-webkit-tap-highlight-color:transparent;flex-shrink:0;}
   .tab.active{color:var(--accent);border-bottom-color:var(--accent);}
   .date-bar{background:var(--surface);border-bottom:1px solid var(--border);padding:10px 16px;display:flex;gap:8px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
   .date-bar::-webkit-scrollbar{display:none;}
@@ -92,6 +93,17 @@
   .err-card{background:rgba(227,73,72,0.1);border:1px solid rgba(227,73,72,0.3);border-radius:var(--radius);padding:20px;text-align:center;color:var(--red);font-size:14px;line-height:1.7;}
   .err-card b{display:block;font-size:16px;margin-bottom:8px;}
 
+  /* YESTERDAY */
+  .yday-hero{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:14px;}
+  .yday-date{font-size:13px;color:var(--muted);margin-bottom:4px;}
+  .yday-rev{font-size:36px;font-weight:700;letter-spacing:-1.5px;line-height:1;}
+  .yday-bench{font-size:12px;margin-top:6px;}
+  .hourly-bar-row{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+  .hourly-label{font-size:11px;color:var(--muted);width:40px;text-align:right;flex-shrink:0;}
+  .hourly-track{flex:1;background:var(--surface2);border-radius:3px;height:20px;overflow:hidden;}
+  .hourly-fill{height:100%;border-radius:3px;background:var(--accent);display:flex;align-items:center;padding-left:6px;font-size:10px;color:white;font-weight:600;}
+  .hourly-qty{font-size:11px;color:var(--muted);width:24px;text-align:right;flex-shrink:0;}
+
   /* PREP */
   .pickup-card{background:var(--surface);border:2px solid var(--accent);border-radius:var(--radius);padding:16px;margin-bottom:14px;}
   .pickup-title{font-size:13px;font-weight:600;color:var(--accent);margin-bottom:12px;display:flex;align-items:center;gap:6px;}
@@ -104,7 +116,6 @@
   .pickup-qty.zero{color:var(--green);}
   .pickup-qty.low{color:var(--accent2);}
   .pickup-qty.high{color:var(--accent);}
-
   .prep-hero{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:14px;}
   .prep-day{font-size:22px;font-weight:700;letter-spacing:-0.5px;}
   .prep-sub{font-size:12px;color:var(--muted);margin-top:3px;}
@@ -112,7 +123,6 @@
   .trend-pill{display:inline-block;font-size:10px;padding:2px 8px;border-radius:10px;margin-left:4px;}
   .trend-up{background:rgba(227,73,72,0.15);color:var(--red);}
   .trend-norm{background:rgba(39,196,132,0.15);color:var(--green);}
-
   .prep-table{width:100%;border-collapse:collapse;}
   .prep-table th{text-align:left;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;padding:0 0 8px;border-bottom:1px solid var(--border);}
   .prep-table th:not(:first-child){text-align:right;}
@@ -125,9 +135,7 @@
   .inv-none{background:rgba(136,134,128,0.15);color:var(--muted);}
   .need-bold{font-weight:700;color:var(--text);}
   .need-zero{font-weight:700;color:var(--green);}
-
   .sat-context{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px;margin-bottom:14px;font-size:13px;line-height:1.6;}
-  .sat-context b{font-weight:600;}
 </style>
 </head>
 <body>
@@ -140,7 +148,8 @@
 </div>
 
 <div class="tab-bar">
-  <div class="tab active" id="tab-today" onclick="switchTab('today')">📋 Today's Prep</div>
+  <div class="tab active" id="tab-today" onclick="switchTab('today')">📋 Prep</div>
+  <div class="tab" id="tab-yesterday" onclick="switchTab('yesterday')">📅 Yesterday</div>
   <div class="tab" id="tab-stats" onclick="switchTab('stats')">📊 Stats</div>
 </div>
 
@@ -167,7 +176,7 @@ const BUFFER=1.20;
 const TREND_THRESHOLD=1.10;
 
 let currentDays=7,revChart=null,ytdRev=0;
-let currentTab='today',prepData=null,prepInventory=null,statsData=null;
+let currentTab='today',prepData=null,prepInventory=null,statsData=null,ydayData=null;
 
 function switchTab(tab){
   currentTab=tab;
@@ -175,6 +184,7 @@ function switchTab(tab){
   document.getElementById('tab-'+tab).classList.add('active');
   document.getElementById('date-bar-wrap').style.display=tab==='stats'?'block':'none';
   if(tab==='today'){ if(prepData) renderPrep(prepData,prepInventory); else loadPrep(); }
+  else if(tab==='yesterday'){ if(ydayData) renderYesterday(ydayData); else loadYesterday(); }
   else { if(statsData) renderStats(statsData); else loadStats(); }
 }
 
@@ -185,17 +195,130 @@ function setRange(days,el){
   statsData=null; loadStats();
 }
 
-function refresh(){ prepData=null; prepInventory=null; statsData=null; ytdRev=0;
-  if(currentTab==='today') loadPrep(); else loadStats(); }
+function refresh(){
+  prepData=null;prepInventory=null;statsData=null;ydayData=null;ytdRev=0;
+  if(currentTab==='today') loadPrep();
+  else if(currentTab==='yesterday') loadYesterday();
+  else loadStats();
+}
 
 function fmt(n){return '$'+Math.round(n).toLocaleString();}
 function fmtD(n){return '$'+Number(n).toFixed(2);}
 function ceil(n){return Math.ceil(n);}
+function getDayName(d){return['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][d.getDay()];}
+function getTomorrow(){const d=new Date();d.setDate(d.getDate()+1);return d;}
+function getYesterday(){const d=new Date();d.setDate(d.getDate()-1);return d;}
+function dateStr(d){return d.toISOString().split('T')[0];}
 
-function getDayName(d){ return ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][d.getDay()]; }
-function getTomorrow(){ const d=new Date(); d.setDate(d.getDate()+1); return d; }
-function getTomorrowName(){ return getDayName(getTomorrow()); }
+// YESTERDAY TAB
+async function loadYesterday(){
+  setStatus('loading','Loading yesterday\'s data...');
+  try{
+    const res=await fetch('/.netlify/functions/square-proxy?days=2');
+    const payload=await res.json();
+    if(payload.error)throw new Error(payload.error);
+    ydayData=payload.summary;
+    renderYesterday(ydayData);
+    setStatus('live',`Live · ${new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})}`);
+  }catch(err){showError(err.message);}
+}
 
+function renderYesterday(summary){
+  const ydayStr=dateStr(getYesterday());
+  const ydayName=getDayName(getYesterday());
+  const dates=summary.byDate||[];
+  const yday=dates.find(d=>d.date===ydayStr) || dates[dates.length-2] || dates[dates.length-1];
+
+  if(!yday){
+    document.getElementById('content').innerHTML=`<div class="err-card"><b>No data for yesterday</b>Yesterday may have been a Monday (closed).</div>`;
+    return;
+  }
+
+  const bench=BENCHMARKS[ydayName]||0;
+  const vs=bench>0?((yday.gross/bench-1)*100):0;
+  const attach=yday.proteins>0?(yday.drinks/yday.proteins*100):0;
+  const bt=yday.byType||{beef:0,chicken:0,lamb:0,veggie:0};
+  const avgTicket=yday.proteins>0?yday.gross/yday.proteins:0;
+
+  // Item breakdown from summary proteinItems filtered to just yesterday... 
+  // We'll use the proteinsByType from the day data
+  const totalProteins=yday.proteins;
+
+  let h='';
+
+  // Hero
+  h+=`<div class="yday-hero">
+    <div class="yday-date">${ydayName}, ${getYesterday().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})}</div>
+    <div class="yday-rev">${fmt(yday.gross)}</div>
+    <div class="yday-bench" style="color:${vs>=0?'var(--green)':'var(--red)'}">
+      ${vs>=0?'↑':'↓'} ${Math.abs(vs).toFixed(1)}% vs ${ydayName} benchmark (${fmt(bench)})
+    </div>
+  </div>`;
+
+  // KPIs
+  h+=`<div class="kpi-grid">
+    <div class="kpi hi"><div class="kpi-label">Revenue</div><div class="kpi-val">${fmt(yday.gross)}</div><div class="kpi-sub">vs benchmark ${fmt(bench)}</div></div>
+    <div class="kpi"><div class="kpi-label">Proteins sold</div><div class="kpi-val">${yday.proteins}</div><div class="kpi-sub">avg ticket ${fmtD(avgTicket)}</div></div>
+    <div class="kpi"><div class="kpi-label">Drink attach</div><div class="kpi-val ${attach>=35?'g':attach>=25?'a':'r'}">${attach.toFixed(1)}%</div><div class="kpi-sub">${yday.drinks} drinks sold · target 35%+</div></div>
+    <div class="kpi"><div class="kpi-label">Avg ticket</div><div class="kpi-val">${fmtD(avgTicket)}</div><div class="kpi-sub">per protein</div></div>
+  </div>`;
+
+  // Protein breakdown
+  h+=`<div class="sec">Protein Breakdown</div>
+  <div class="protein-grid">
+    <div class="ptype-card"><div class="ptype-icon">🐄</div><div class="ptype-val">${bt.beef}</div><div class="ptype-label">Beef</div><div class="ptype-pct">${totalProteins>0?Math.round(bt.beef/totalProteins*100):0}%</div></div>
+    <div class="ptype-card"><div class="ptype-icon">🍗</div><div class="ptype-val">${bt.chicken}</div><div class="ptype-label">Chicken</div><div class="ptype-pct">${totalProteins>0?Math.round(bt.chicken/totalProteins*100):0}%</div></div>
+    <div class="ptype-card"><div class="ptype-icon">🐑</div><div class="ptype-val">${bt.lamb}</div><div class="ptype-label">Lamb</div><div class="ptype-pct">${totalProteins>0?Math.round(bt.lamb/totalProteins*100):0}%</div></div>
+    <div class="ptype-card"><div class="ptype-icon">🥬</div><div class="ptype-val">${bt.veggie}</div><div class="ptype-label">Veggie</div><div class="ptype-pct">${totalProteins>0?Math.round(bt.veggie/totalProteins*100):0}%</div></div>
+  </div>`;
+
+  // Flags
+  const flags=[];
+  if(attach<25)flags.push({type:'danger',icon:'🧃',title:`Drink attach: ${attach.toFixed(1)}%`,body:'Low — target 35%+. Prompt every customer at counter.'});
+  else if(attach<35)flags.push({type:'warn',icon:'🧃',title:`Drink attach: ${attach.toFixed(1)}%`,body:'Getting there — target 35%+.'});
+  else flags.push({type:'ok',icon:'🧃',title:`Drink attach: ${attach.toFixed(1)}%`,body:'Strong performance on drinks.'});
+  if(yday.gokart>15)flags.push({type:'danger',icon:'⚠️',title:`Go-Kart anomaly: ${yday.gokart} sold`,body:`Avg is 4–8. Est. ~$${Math.max(0,yday.gokart-8)*3} lost from mischarged Classics.`});
+  if(yday.gross>4000)flags.push({type:'ok',icon:'🔥',title:'Record territory!',body:`${fmt(yday.gross)} is above your all-time record pace.`});
+  if(vs>=20)flags.push({type:'ok',icon:'📈',title:`Strong ${ydayName}`,body:`${Math.abs(vs).toFixed(0)}% above your ${ydayName} benchmark — great day.`});
+  if(vs<=-20)flags.push({type:'warn',icon:'📉',title:`Slow ${ydayName}`,body:`${Math.abs(vs).toFixed(0)}% below your ${ydayName} benchmark.`});
+
+  if(flags.length){
+    h+=`<div class="sec">Flags</div>`;
+    flags.forEach(f=>{h+=`<div class="flag ${f.type}"><div class="flag-icon">${f.icon}</div><div class="flag-text"><b>${f.title}</b>${f.body}</div></div>`;});
+  }
+
+  // Item mix for yesterday from proteinItems (these are totals for the period — note that)
+  h+=`<div class="sec">Item Mix — ${ydayName}</div>
+  <div class="chart-card">`;
+  const tagLabels={beef:'Beef',chicken:'Chicken',lamb:'Lamb',veggie:'Veggie'};
+  const items=summary.proteinItems||[];
+  // Filter to items that match yesterday's protein type counts roughly
+  const maxQ=Math.max(bt.beef,bt.chicken,bt.lamb,bt.veggie,1);
+
+  // Show protein type bars based on yesterday's byType
+  const ptypes=[
+    {name:'Beef items',type:'beef',qty:bt.beef},
+    {name:'Chicken (Firebird)',type:'chicken',qty:bt.chicken},
+    {name:'Lamb (Lamborghini)',type:'lamb',qty:bt.lamb},
+    {name:'Veggie (Veg Engine)',type:'veggie',qty:bt.veggie},
+  ].filter(p=>p.qty>0);
+
+  ptypes.forEach(p=>{
+    const pct=(p.qty/maxQ*100).toFixed(0);
+    h+=`<div class="item-row">
+      <div class="item-name">${p.name}</div>
+      <span class="item-tag tag-${p.type}">${tagLabels[p.type]}</span>
+      <div class="item-bar-wrap"><div class="item-bar-track"><div class="item-bar-fill bar-${p.type}" style="width:${pct}%"></div></div></div>
+      <div class="item-qty">${p.qty}</div>
+      <div class="item-rev"></div>
+    </div>`;
+  });
+  h+=`</div>`;
+
+  document.getElementById('content').innerHTML=h;
+}
+
+// PREP TAB
 async function loadPrep(){
   setStatus('loading','Pulling inventory & sales history...');
   try{
@@ -206,24 +329,21 @@ async function loadPrep(){
     prepInventory=payload.inventory||{};
     renderPrep(prepData,prepInventory);
     setStatus('live',`Live · ${new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})} · inventory from Square`);
-  }catch(err){ showError(err.message); }
+  }catch(err){showError(err.message);}
 }
 
-function renderPrep(summary, inventory){
-  // Tomorrow's day (what to prep for)
+function renderPrep(summary,inventory){
   const tomorrow=getTomorrow();
-  const tomorrowName=getTomorrowName();
+  const tomorrowName=getDayName(tomorrow);
   const todayName=getDayName(new Date());
   const dow=summary.dowAvgs;
   const dayData=dow[tomorrowName];
-
-  // Today's (Saturday) sales for context
   const dates=summary.byDate||[];
-  const todayStr=new Date().toISOString().split('T')[0];
+  const todayStr=dateStr(new Date());
   const todaySales=dates.find(d=>d.date===todayStr);
 
   if(!dayData||dayData.days<1){
-    document.getElementById('content').innerHTML=`<div class="err-card"><b>No history for ${tomorrowName}</b>Not enough ${tomorrowName} data yet to generate prep targets.</div>`;
+    document.getElementById('content').innerHTML=`<div class="err-card"><b>No history for ${tomorrowName}</b>Not enough ${tomorrowName} data yet.</div>`;
     return;
   }
 
@@ -232,7 +352,6 @@ function renderPrep(summary, inventory){
   const bt=dayData.avgByType;
   const totalAvg=dayData.avgProteins||1;
 
-  // Targets
   const targets={
     beef:  ceil(bt.beef  /totalAvg*totalTarget),
     chicken:ceil(bt.chicken/totalAvg*totalTarget),
@@ -240,68 +359,61 @@ function renderPrep(summary, inventory){
     veggie:ceil(bt.veggie/totalAvg*totalTarget),
   };
 
-  // On-hand from Square inventory (chicken, lamb, veggie only — beef always fresh)
   const onHand={
-    beef: 0, // always fresh, ignore
-    chicken: Math.round(inventory.chicken||0),
-    lamb:    Math.round(inventory.lamb||0),
-    veggie:  Math.round(inventory.veggie||0),
+    beef:0,
+    chicken:Math.round(inventory.chicken||0),
+    lamb:   Math.round(inventory.lamb||0),
+    veggie: Math.round(inventory.veggie||0),
   };
 
-  // What to pick up = target - on hand (min 0)
   const toPickup={
-    beef:   targets.beef, // always fresh
-    chicken:Math.max(0, targets.chicken - onHand.chicken),
-    lamb:   Math.max(0, targets.lamb    - onHand.lamb),
-    veggie: Math.max(0, targets.veggie  - onHand.veggie),
+    beef:   targets.beef,
+    chicken:Math.max(0,targets.chicken-onHand.chicken),
+    lamb:   Math.max(0,targets.lamb-onHand.lamb),
+    veggie: Math.max(0,targets.veggie-onHand.veggie),
   };
   const totalBuns=targets.beef+targets.chicken+targets.lamb+targets.veggie;
   const drinks=ceil((dayData.avgDrinks||0)*BUFFER*trendMult);
   const isTrending=dayData.trend>TREND_THRESHOLD;
+  const invError=inventory._error;
 
   let h='';
 
-  // Today's context if Saturday -> Sunday
   if(todaySales){
-    const satBench=BENCHMARKS['Saturday']||2568;
-    const vs=((todaySales.gross/satBench-1)*100).toFixed(0);
-    const dir=todaySales.gross>=satBench?'above':'below';
+    const bench=BENCHMARKS[todayName]||0;
+    const vs=bench>0?((todaySales.gross/bench-1)*100).toFixed(0):0;
     h+=`<div class="sat-context">
       <b>Today (${todayName}):</b> ${fmt(todaySales.gross)} · ${todaySales.proteins} proteins
-      — <span style="color:${todaySales.gross>=satBench?'var(--green)':'var(--accent2)'}">${Math.abs(vs)}% ${dir} your Saturday benchmark</span><br>
-      <span style="color:var(--muted);font-size:12px">Strong Saturdays tend to carry into Sunday — prep targets adjusted accordingly.</span>
+      <span style="color:${todaySales.gross>=(bench||0)?'var(--green)':'var(--accent2)'};margin-left:6px">${Math.abs(vs)}% ${todaySales.gross>=(bench||1)?'above':'below'} benchmark</span>
     </div>`;
   }
 
-  // Hero
   h+=`<div class="prep-hero">
     <div class="prep-day">Prepping for ${tomorrowName} ${tomorrow.toLocaleDateString('en-US',{month:'short',day:'numeric'})}</div>
-    <div class="prep-sub">Based on ${dayData.days} previous ${tomorrowName}s · avg ${Math.round(dayData.avgProteins)} proteins · ${fmt(dayData.avgRevenue)}</div>
+    <div class="prep-sub">Based on last ${dayData.days} ${tomorrowName}s · avg ${Math.round(dayData.avgProteins)} proteins · ${fmt(dayData.avgRevenue)}</div>
     <div class="prep-meta">
       <span class="trend-pill ${isTrending?'trend-up':'trend-norm'}">${isTrending?'↑ Trending up':'✓ Normal pace'}</span>
-      ${isTrending?' Last 3 '+tomorrowName+'s running 10%+ above your average — bumped targets an extra 10%':' Last 3 '+tomorrowName+'s in line with your average'}
+      ${isTrending?' Last 3 '+tomorrowName+'s running above average — +10% applied':' Recent '+tomorrowName+'s in line with average'}
+      ${invError?`<br><span style="color:var(--accent2)">⚠️ Inventory pull failed — showing 0 on hand. Update manually if needed.</span>`:''}
     </div>
   </div>`;
 
-  // Pick up card
-  h+=`<div class="pickup-card">
-    <div class="pickup-title">🛒 What to pick up today</div>`;
-
+  // Pick up list
+  h+=`<div class="pickup-card"><div class="pickup-title">🛒 What to pick up for ${tomorrowName}</div>`;
   const rows=[
     {emoji:'🐄',name:'Beef patties',type:'beef',note:'Always fresh — full target'},
     {emoji:'🍗',name:'Chicken pieces',type:'chicken',note:`${onHand.chicken} in fridge`},
     {emoji:'🐑',name:'Lamb patties',type:'lamb',note:`${onHand.lamb} in fridge`},
     {emoji:'🥬',name:'Veggie patties',type:'veggie',note:`${onHand.veggie} in fridge`},
-    {emoji:'🥖',name:'Buns',type:'buns',note:'1 per protein · total target'},
+    {emoji:'🥖',name:'Buns',type:'buns',note:'1 per protein'},
     {emoji:'🧃',name:'Drinks to stock',type:'drinks',note:'based on avg attach rate'},
   ];
-
   rows.forEach(row=>{
     let qty,detail,cls;
-    if(row.type==='buns'){ qty=totalBuns; detail=''; cls=qty>100?'high':'low'; }
-    else if(row.type==='drinks'){ qty=drinks; detail=''; cls='low'; }
-    else if(row.type==='beef'){ qty=toPickup.beef; detail=`target: ${targets.beef}`; cls='high'; }
-    else {
+    if(row.type==='buns'){qty=totalBuns;detail='';cls=qty>100?'high':'low';}
+    else if(row.type==='drinks'){qty=drinks;detail='';cls='low';}
+    else if(row.type==='beef'){qty=toPickup.beef;detail=`target: ${targets.beef}`;cls='high';}
+    else{
       qty=toPickup[row.type];
       const have=onHand[row.type];
       detail=have>0?`${have} on hand → need ${targets[row.type]} total`:`none on hand → need ${targets[row.type]}`;
@@ -310,50 +422,38 @@ function renderPrep(summary, inventory){
     h+=`<div class="pickup-row">
       <div class="pickup-emoji">${row.emoji}</div>
       <div><div class="pickup-name">${row.name}</div><div class="pickup-detail">${detail||row.note}</div></div>
-      <div class="pickup-qty ${cls}">${qty===0?'✓ stocked':qty}</div>
+      <div class="pickup-qty ${cls}">${qty===0?'✓':qty}</div>
     </div>`;
   });
   h+=`</div>`;
 
-  // Detailed breakdown table
-  h+=`<div class="sec">Full Prep Breakdown</div>
-  <div class="chart-card">
-    <table class="prep-table">
-      <thead><tr><th>Protein</th><th>Target</th><th>On Hand</th><th>Pick Up</th></tr></thead>
-      <tbody>`;
-
+  // Full table
+  h+=`<div class="sec">Full Prep Breakdown</div><div class="chart-card"><table class="prep-table">
+    <thead><tr><th>Protein</th><th>Target</th><th>On Hand</th><th>Pick Up</th></tr></thead><tbody>`;
   const proteinRows=[
     {emoji:'🐄',name:'Beef',type:'beef',tracked:false},
     {emoji:'🍗',name:'Chicken (Firebird)',type:'chicken',tracked:true},
     {emoji:'🐑',name:'Lamb (Lamborghini)',type:'lamb',tracked:true},
     {emoji:'🥬',name:'Veggie (Veg Engine)',type:'veggie',tracked:true},
   ];
-
   proteinRows.forEach(p=>{
     const tgt=targets[p.type];
     const have=p.tracked?onHand[p.type]:null;
     const need=p.tracked?toPickup[p.type]:tgt;
-    const haveStr=p.tracked?(have>0?`${have}<span class="inv-badge ${have>=tgt/2?'inv-ok':'inv-low'}">${have>=tgt?'fully stocked':'partial'}</span>`:`0<span class="inv-badge inv-none">none</span>`):`<span class="inv-badge inv-none">fresh daily</span>`;
+    const haveStr=p.tracked?(have>0?`${have}<span class="inv-badge ${have>=tgt/2?'inv-ok':'inv-low'}">${have>=tgt?'stocked':'partial'}</span>`:`0<span class="inv-badge inv-none">none</span>`):`<span class="inv-badge inv-none">fresh daily</span>`;
     const needStr=(!p.tracked||need>0)?`<span class="need-bold">${need}</span>`:`<span class="need-zero">✓ 0</span>`;
     h+=`<tr><td>${p.emoji} ${p.name}</td><td>${tgt}</td><td>${haveStr}</td><td>${needStr}</td></tr>`;
   });
-
-  h+=`<tr style="border-top:2px solid var(--border)">
-    <td style="font-weight:600">🥖 Buns total</td>
-    <td style="font-weight:700">${totalBuns}</td>
-    <td><span class="inv-badge inv-none">check stock</span></td>
-    <td><span class="need-bold">${totalBuns}</span></td>
-  </tr>`;
+  h+=`<tr style="border-top:2px solid var(--border)"><td style="font-weight:600">🥖 Buns total</td><td style="font-weight:700">${totalBuns}</td><td><span class="inv-badge inv-none">check stock</span></td><td><span class="need-bold">${totalBuns}</span></td></tr>`;
   h+=`</tbody></table>
   <div style="font-size:11px;color:var(--muted);margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
-    On-hand counts pulled live from Square inventory · Beef is always prepped fresh · 20% buffer + ${isTrending?'10% trend boost ':''}applied to all targets
-  </div>
-  </div>`;
+    Based on last ${dayData.days} ${tomorrowName}s · 20% buffer${isTrending?' + 10% trend boost':''} applied · Inventory pulled live from Square
+  </div></div>`;
 
   document.getElementById('content').innerHTML=h;
 }
 
-// STATS
+// STATS TAB
 async function loadStats(){
   setStatus('loading','Fetching sales data...');
   try{
@@ -364,26 +464,22 @@ async function loadStats(){
     statsData=payload.summary;
     renderStats(statsData);
     setStatus('live',`Live · ${new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})} · ${payload.summary?.orderCount||0} orders`);
-  }catch(err){ showError(err.message); }
+  }catch(err){showError(err.message);}
 }
 
 async function loadYtd(){
-  try{
-    const res=await fetch('/.netlify/functions/square-proxy?ytd=true');
-    const p=await res.json();
-    if(p.summary)ytdRev=p.summary.rev;
-  }catch(e){ytdRev=0;}
+  try{const res=await fetch('/.netlify/functions/square-proxy?ytd=true');const p=await res.json();if(p.summary)ytdRev=p.summary.rev;}catch(e){ytdRev=0;}
 }
 
 function buildFlags(summary){
   const flags=[];
   const{proteins,drinks,gkByDate,byDate}=summary;
   const attach=proteins>0?drinks/proteins*100:0;
-  if(attach<25)flags.push({type:'danger',icon:'🧃',title:`Drink attach: ${attach.toFixed(1)}%`,body:'Low — target 35%+. Prompt every customer at counter.'});
-  else if(attach<35)flags.push({type:'warn',icon:'🧃',title:`Drink attach: ${attach.toFixed(1)}%`,body:'Getting there — target 35%+. Keep prompting.'});
-  else flags.push({type:'ok',icon:'🧃',title:`Drink attach: ${attach.toFixed(1)}%`,body:'Strong — staff are prompting well.'});
+  if(attach<25)flags.push({type:'danger',icon:'🧃',title:`Drink attach: ${attach.toFixed(1)}%`,body:'Low — target 35%+.'});
+  else if(attach<35)flags.push({type:'warn',icon:'🧃',title:`Drink attach: ${attach.toFixed(1)}%`,body:'Getting there — target 35%+.'});
+  else flags.push({type:'ok',icon:'🧃',title:`Drink attach: ${attach.toFixed(1)}%`,body:'Strong — staff prompting well.'});
   if(gkByDate)Object.entries(gkByDate).filter(([,q])=>q>15).forEach(([date,qty])=>{
-    flags.push({type:'danger',icon:'⚠️',title:`Go-Kart anomaly: ${date}`,body:`${qty} Go-Karts (avg 4–8). Est. ~$${Math.max(0,qty-8)*3} lost revenue. Retrain cashier.`});
+    flags.push({type:'danger',icon:'⚠️',title:`Go-Kart anomaly: ${date}`,body:`${qty} sold (avg 4–8). Est. ~$${Math.max(0,qty-8)*3} lost.`});
   });
   const best=byDate&&[...byDate].sort((a,b)=>b.gross-a.gross)[0];
   if(best&&best.gross>3000)flags.push({type:'ok',icon:'🔥',title:`Big day: ${best.date}`,body:`${fmt(best.gross)} — ${best.proteins} proteins${best.gross>4000?' — record territory!':''}`});
@@ -417,39 +513,32 @@ function renderStats(summary){
     <div class="kpi hi"><div class="kpi-label">Revenue (${currentDays}d)</div><div class="kpi-val">${fmt(rev)}</div><div class="kpi-sub">${tradingDays} trading days · ${fmt(tradingDays>0?rev/tradingDays:0)}/day avg</div></div>
     <div class="kpi"><div class="kpi-label">Total proteins</div><div class="kpi-val">${proteins}</div><div class="kpi-sub">${tradingDays>0?(proteins/tradingDays).toFixed(1):0} per day avg</div></div>
     <div class="kpi"><div class="kpi-label">Drink attach</div><div class="kpi-val ${attach>=35?'g':attach>=25?'a':'r'}">${attach.toFixed(1)}%</div><div class="kpi-sub">${drinks} drinks · ${proteins} proteins · target 35%+</div></div>
-    <div class="kpi"><div class="kpi-label">Avg ticket</div><div class="kpi-val">${proteins>0?fmtD(rev/proteins):'$0'}</div><div class="kpi-sub">revenue per protein</div></div>
+    <div class="kpi"><div class="kpi-label">Avg ticket</div><div class="kpi-val">${proteins>0?fmtD(rev/proteins):'$0'}</div><div class="kpi-sub">per protein</div></div>
   </div>`;
-
   h+=`<div class="sec">Protein Breakdown</div><div class="protein-grid">
     <div class="ptype-card"><div class="ptype-icon">🐄</div><div class="ptype-val">${pb.beef}</div><div class="ptype-label">Beef</div><div class="ptype-pct">${proteins>0?Math.round(pb.beef/proteins*100):0}%</div></div>
     <div class="ptype-card"><div class="ptype-icon">🍗</div><div class="ptype-val">${pb.chicken}</div><div class="ptype-label">Chicken</div><div class="ptype-pct">${proteins>0?Math.round(pb.chicken/proteins*100):0}%</div></div>
     <div class="ptype-card"><div class="ptype-icon">🐑</div><div class="ptype-val">${pb.lamb}</div><div class="ptype-label">Lamb</div><div class="ptype-pct">${proteins>0?Math.round(pb.lamb/proteins*100):0}%</div></div>
     <div class="ptype-card"><div class="ptype-icon">🥬</div><div class="ptype-val">${pb.veggie}</div><div class="ptype-label">Veggie</div><div class="ptype-pct">${proteins>0?Math.round(pb.veggie/proteins*100):0}%</div></div>
   </div>`;
-
   if(ytdRev>0){h+=`<div class="kpi full" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:14px;">
     <div class="kpi-label">2026 Annual tracker — target ${fmt(ANNUAL_TARGET)}</div>
     <div class="kpi-val ${paceVs>=0?'g':'r'}">${fmt(ytdRev)} YTD</div>
     <div class="ann-bar-track"><div class="ann-bar-fill" style="width:${ytdPct.toFixed(1)}%"></div></div>
     <div class="ann-labels"><span>${ytdPct.toFixed(1)}% of target</span><span>Pace: ${fmt(pace)}/yr <span class="${paceVs>=0?'pos':'neg'}">(${paceVs>=0?'+':''}${fmt(paceVs)} vs target)</span></span></div>
   </div>`;}
-
   if(flags.length){h+=`<div class="sec">Flags & Alerts</div>`;flags.forEach(f=>{h+=`<div class="flag ${f.type}"><div class="flag-icon">${f.icon}</div><div class="flag-text"><b>${f.title}</b>${f.body}</div></div>`;});}
-
   h+=`<div class="sec">Daily Revenue</div><div class="chart-card"><div class="chart-title"><span style="color:#27c484">■</span> Sat &nbsp;<span style="color:#4a8fe8">■</span> Sun &nbsp;<span style="color:#f5a623">■</span> Fri &nbsp;<span style="color:#e8471a">■</span> Weekday</div><div class="chart-wrap" style="height:180px"><canvas id="rev-chart"></canvas></div></div>`;
-
   h+=`<div class="sec">Day of Week vs Benchmark</div><div class="chart-card"><table class="dow-table"><thead><tr><th>Day</th><th>This period</th><th>Benchmark</th><th>Diff</th></tr></thead><tbody>`;
   ['Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'].forEach(day=>{
     const d=dowAvgs&&dowAvgs[day];const bench=BENCHMARKS[day];
     if(d){const pct=((d.avgRevenue/bench-1)*100).toFixed(0);h+=`<tr><td>${day.substring(0,3)}</td><td>${fmt(d.avgRevenue)}</td><td style="color:var(--muted)">${fmt(bench)}</td><td><span class="${d.avgRevenue>=bench?'pos':'neg'}">${d.avgRevenue>=bench?'+':''}${pct}%</span></td></tr>`;}
   });
   h+=`</tbody></table></div>`;
-
   h+=`<div class="sec">Item Mix</div><div class="chart-card">`;
   const tagLabels={beef:'Beef',chicken:'Chicken',lamb:'Lamb',veggie:'Veggie'};
   if(proteinItems&&proteinItems.length){proteinItems.forEach(item=>{const pct=(item.qty/maxQ*100).toFixed(0);h+=`<div class="item-row"><div class="item-name">${item.name}</div><span class="item-tag tag-${item.type}">${tagLabels[item.type]||''}</span><div class="item-bar-wrap"><div class="item-bar-track"><div class="item-bar-fill bar-${item.type}" style="width:${pct}%"></div></div></div><div class="item-qty">${item.qty}</div><div class="item-rev">${fmt(item.gross)}</div></div>`;});}
   h+=`</div>`;
-
   document.getElementById('content').innerHTML=h;
   setTimeout(()=>renderChart(byDate),50);
 }
