@@ -13,11 +13,25 @@ exports.handler = async function (event) {
     return { statusCode: 200, headers, body: "" };
   }
 
-  const BURGER_KW = ['classic motor','firebird',"flyin'",'flyin hawaiian','deux chev','lamborghini','fungu','veg engine','go-kart','go kart'];
+  const PROTEIN_MAP = {
+    beef: ['classic motor','deux chev',"flyin'",'flyin hawaiian','go-kart','go kart','fungu'],
+    chicken: ['firebird'],
+    lamb: ['lamborghini'],
+    veggie: ['veg engine'],
+  };
+  const ALL_BURGER_KW = [...PROTEIN_MAP.beef, ...PROTEIN_MAP.chicken, ...PROTEIN_MAP.lamb, ...PROTEIN_MAP.veggie];
   const DRINK_KW = ['coca-cola','jarritos','voss'];
 
   function getDayName(dateStr) {
     return ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][new Date(dateStr + 'T12:00:00').getDay()];
+  }
+
+  function getProteinType(name) {
+    const n = name.toLowerCase();
+    for (const [type, kws] of Object.entries(PROTEIN_MAP)) {
+      if (kws.some(k => n.includes(k))) return type;
+    }
+    return null;
   }
 
   async function fetchOrders(fromDate, toDate, cursor = null) {
@@ -57,6 +71,7 @@ exports.handler = async function (event) {
     const byDate = {}, items = {};
     let rev = 0, proteins = 0, drinks = 0;
     const gkByDate = {};
+    const proteinsByType = { beef: 0, chicken: 0, lamb: 0, veggie: 0 };
 
     (orders || []).forEach(o => {
       const date = o.created_at.substring(0, 10);
@@ -72,7 +87,13 @@ exports.handler = async function (event) {
         const dn = li.name || 'Unknown';
         if (!items[dn]) items[dn] = { qty: 0, gross: 0 };
         items[dn].qty += qty; items[dn].gross += g;
-        if (BURGER_KW.some(k => name.includes(k))) { byDate[date].proteins += qty; proteins += qty; }
+
+        const ptype = getProteinType(dn);
+        if (ptype) {
+          byDate[date].proteins += qty;
+          proteins += qty;
+          proteinsByType[ptype] += qty;
+        }
         if (DRINK_KW.some(k => name.includes(k))) { byDate[date].drinks += qty; drinks += qty; }
         if (name.includes('go-kart') || name.includes('go kart')) {
           byDate[date].gokart += qty;
@@ -100,41 +121,43 @@ exports.handler = async function (event) {
     });
 
     const proteinItems = Object.entries(items)
-      .filter(([n]) => BURGER_KW.some(k => n.toLowerCase().includes(k)))
+      .filter(([n]) => getProteinType(n))
       .sort((a,b) => b[1].qty - a[1].qty)
       .slice(0, 10)
-      .map(([name, d]) => ({ name, qty: d.qty, gross: Math.round(d.gross) }));
+      .map(([name, d]) => ({ name, qty: d.qty, gross: Math.round(d.gross), type: getProteinType(name) }));
 
     const dailySummary = Object.entries(byDate)
       .sort((a,b) => a[0].localeCompare(b[0]))
       .map(([date, d]) => ({ date, gross: Math.round(d.gross), proteins: d.proteins, drinks: d.drinks, gokart: d.gokart }));
 
-    return { rev: Math.round(rev), proteins, drinks, byDate: dailySummary, dowAvgs, proteinItems, gkByDate, orderCount: orders.length };
+    return { rev: Math.round(rev), proteins, drinks, proteinsByType, byDate: dailySummary, dowAvgs, proteinItems, gkByDate, orderCount: orders.length };
   }
 
   try {
     const params = event.queryStringParameters || {};
     const days = parseInt(params.days || "7");
+    const isYtd = params.ytd === "true";
 
     const end = new Date();
     const start = new Date();
-    start.setDate(start.getDate() - days);
-    const startStr = start.toISOString().split("T")[0] + "T00:00:00.000Z";
-    const endStr = end.toISOString().split("T")[0] + "T23:59:59.999Z";
-    const ytdStart = new Date(new Date().getFullYear(), 0, 1).toISOString().split("T")[0] + "T00:00:00.000Z";
 
-    const [orders, ytdOrders] = await Promise.all([
-      getAllOrders(startStr, endStr),
-      getAllOrders(ytdStart, endStr),
-    ]);
+    let startStr, endStr;
+    if (isYtd) {
+      startStr = new Date(new Date().getFullYear(), 0, 1).toISOString().split("T")[0] + "T00:00:00.000Z";
+      endStr = end.toISOString().split("T")[0] + "T23:59:59.999Z";
+    } else {
+      start.setDate(start.getDate() - days);
+      startStr = start.toISOString().split("T")[0] + "T00:00:00.000Z";
+      endStr = end.toISOString().split("T")[0] + "T23:59:59.999Z";
+    }
 
+    const orders = await getAllOrders(startStr, endStr);
     const summary = processOrders(orders);
-    const ytdSummary = processOrders(ytdOrders);
 
     return {
       statusCode: 200,
       headers,
-      body: JSON.stringify({ summary, ytdRev: ytdSummary.rev, ytdProteins: ytdSummary.proteins }),
+      body: JSON.stringify({ summary }),
     };
   } catch (err) {
     return { statusCode: 500, headers, body: JSON.stringify({ error: err.message }) };
