@@ -20,8 +20,6 @@ exports.handler = async function (event) {
     veggie: ['veg engine'],
   };
   const DRINK_KW = ['coca-cola','jarritos','voss'];
-  // Items we track inventory for in Square
-  const INVENTORY_ITEMS = ['firebird','lamborghini','veg engine'];
 
   function getDayName(dateStr) {
     return ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][new Date(dateStr + 'T12:00:00').getDay()];
@@ -45,62 +43,65 @@ exports.handler = async function (event) {
     return r.json();
   }
 
-  async function squareGet(path) {
-    const r = await fetch(BASE + path, {
-      headers: { Authorization: `Bearer ${TOKEN}`, "Square-Version": "2024-01-18", "Content-Type": "application/json" },
-    });
-    if (!r.ok) { const err = await r.text(); throw new Error(`Square ${r.status} ${path}: ${err.substring(0, 200)}`); }
-    return r.json();
-  }
-
-  // Get current inventory counts for tracked proteins
+  // Get inventory by listing ALL catalog items and matching by name
   async function getInventoryCounts() {
     try {
-      // Step 1: Search catalog for our tracked items
-      const catalogResult = await squarePost('/catalog/search', {
-        object_types: ['ITEM'],
-        query: { text_query: { keywords: INVENTORY_ITEMS } }
-      });
+      // Pull all catalog items (no text search — avoids matching issues)
+      let allItems = [], cursor = null;
+      do {
+        const body = { object_types: ['ITEM'], limit: 100 };
+        if (cursor) body.cursor = cursor;
+        const result = await squarePost('/catalog/search', body);
+        if (result.objects) allItems = allItems.concat(result.objects);
+        cursor = result.cursor;
+      } while (cursor);
 
-      const items = catalogResult.objects || [];
+      // Find our tracked items by name
+      const TRACKED = {
+        chicken: ['firebird'],
+        lamb: ['lamborghini'],
+        veggie: ['veg engine'],
+      };
+
       const variationIds = [];
-      const itemNameMap = {}; // variationId -> item name
+      const idToType = {};
 
-      items.forEach(item => {
+      allItems.forEach(item => {
         const itemName = (item.item_data?.name || '').toLowerCase();
-        const isTracked = INVENTORY_ITEMS.some(k => itemName.includes(k));
-        if (isTracked) {
-          (item.item_data?.variations || []).forEach(v => {
-            variationIds.push(v.id);
-            itemNameMap[v.id] = item.item_data?.name;
-          });
+        for (const [type, keywords] of Object.entries(TRACKED)) {
+          if (keywords.some(k => itemName.includes(k))) {
+            (item.item_data?.variations || []).forEach(v => {
+              variationIds.push(v.id);
+              idToType[v.id] = type;
+            });
+          }
         }
       });
 
-      if (variationIds.length === 0) return {};
+      if (variationIds.length === 0) {
+        console.log('No tracked item variations found in catalog');
+        return {};
+      }
 
-      // Step 2: Get inventory counts
+      // Batch retrieve inventory counts
       const invResult = await squarePost('/inventory/counts/batch-retrieve', {
         catalog_object_ids: variationIds,
         location_ids: [LOCATION_ID],
+        states: ['IN_STOCK'],
       });
 
       const counts = {};
       (invResult.counts || []).forEach(c => {
-        if (c.state === 'IN_STOCK') {
-          const name = itemNameMap[c.catalog_object_id] || '';
-          const qty = parseFloat(c.quantity || 0);
-          const nameLower = name.toLowerCase();
-          if (nameLower.includes('firebird')) counts.chicken = (counts.chicken || 0) + qty;
-          else if (nameLower.includes('lamborghini')) counts.lamb = (counts.lamb || 0) + qty;
-          else if (nameLower.includes('veg engine')) counts.veggie = (counts.veggie || 0) + qty;
+        const type = idToType[c.catalog_object_id];
+        if (type && c.state === 'IN_STOCK') {
+          counts[type] = (counts[type] || 0) + parseFloat(c.quantity || 0);
         }
       });
 
       return counts;
     } catch (e) {
-      console.error('Inventory fetch failed:', e.message);
-      return {};
+      console.error('Inventory fetch error:', e.message);
+      return { _error: e.message };
     }
   }
 
@@ -167,34 +168,54 @@ exports.handler = async function (event) {
       });
     });
 
+    // Build DOW averages using LAST 6 occurrences of each day only
     const dow = {};
+    const dowDates = {}; // track dates per day for sorting
+
     Object.entries(byDate).forEach(([date, d]) => {
       const day = getDayName(date);
       if (!['Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'].includes(day)) return;
-      if (!dow[day]) dow[day] = { revenue: [], proteins: [], byType: { beef:[], chicken:[], lamb:[], veggie:[] }, drinks: [] };
-      dow[day].revenue.push(d.gross);
-      dow[day].proteins.push(d.proteins);
-      dow[day].drinks.push(d.drinks);
-      Object.keys(d.byType).forEach(t => dow[day].byType[t].push(d.byType[t]));
+      if (!dowDates[day]) dowDates[day] = [];
+      dowDates[day].push({ date, ...d });
+    });
+
+    // Sort each day's dates and take last 6
+    Object.entries(dowDates).forEach(([day, dayEntries]) => {
+      dayEntries.sort((a,b) => a.date.localeCompare(b.date));
+      const last6 = dayEntries.slice(-6); // last 6 occurrences only
+      dow[day] = {
+        revenue: last6.map(d => d.gross),
+        proteins: last6.map(d => d.proteins),
+        drinks: last6.map(d => d.drinks),
+        byType: {
+          beef:    last6.map(d => d.byType.beef),
+          chicken: last6.map(d => d.byType.chicken),
+          lamb:    last6.map(d => d.byType.lamb),
+          veggie:  last6.map(d => d.byType.veggie),
+        },
+        dates: last6.map(d => d.date),
+      };
     });
 
     const dowAvgs = {};
     Object.entries(dow).forEach(([day, d]) => {
       const avg = arr => arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : 0;
-      const recent3avg = arr => arr.length >= 3 ? avg(arr.slice(-3)) : avg(arr);
+      // Trend: last 3 vs last 6 avg
+      const last3avg = arr => arr.length >= 3 ? avg(arr.slice(-3)) : avg(arr);
       dowAvgs[day] = {
         avgRevenue: avg(d.revenue),
         avgProteins: avg(d.proteins),
         avgDrinks: avg(d.drinks),
         avgByType: {
-          beef: avg(d.byType.beef),
+          beef:    avg(d.byType.beef),
           chicken: avg(d.byType.chicken),
-          lamb: avg(d.byType.lamb),
-          veggie: avg(d.byType.veggie),
+          lamb:    avg(d.byType.lamb),
+          veggie:  avg(d.byType.veggie),
         },
         days: d.revenue.length,
-        trend: d.revenue.length >= 3 ? recent3avg(d.revenue) / avg(d.revenue) : 1,
-        recentRevenue: d.revenue.slice(-4), // last 4 for display
+        trend: d.revenue.length >= 3 ? last3avg(d.revenue) / avg(d.revenue) : 1,
+        drinkTrend: d.drinks.length >= 3 ? last3avg(d.drinks) / avg(d.drinks) : 1,
+        recentDates: d.dates,
       };
     });
 
@@ -224,6 +245,7 @@ exports.handler = async function (event) {
     if (isYtd) {
       startStr = new Date(new Date().getFullYear(), 0, 1).toISOString().split("T")[0] + "T00:00:00.000Z";
     } else if (isPrep) {
+      // 90 days gives us ~13 of each day of week — more than enough for last 6
       const s = new Date(); s.setDate(s.getDate() - 90);
       startStr = s.toISOString().split("T")[0] + "T00:00:00.000Z";
     } else {
@@ -231,14 +253,12 @@ exports.handler = async function (event) {
       startStr = s.toISOString().split("T")[0] + "T00:00:00.000Z";
     }
 
-    // For prep mode, also fetch inventory counts in parallel
     const promises = [getAllOrders(startStr, endStr)];
     if (isPrep) promises.push(getInventoryCounts());
 
     const results = await Promise.all(promises);
     const orders = results[0];
     const inventory = isPrep ? (results[1] || {}) : {};
-
     const summary = processOrders(orders);
 
     return {
