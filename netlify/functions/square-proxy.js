@@ -1,7 +1,7 @@
 exports.handler = async function (event) {
   const TOKEN = process.env.SQUARE_TOKEN;
   const LOCATION_ID = process.env.SQUARE_LOCATION_ID;
-  const TM_KEY = process.env.TICKETMASTER_KEY || 'iA8ILwcpFwsVhTg4l0FR4lMdxsQQphGh';
+  const TM_KEY = process.env.TICKETMASTER_KEY;
   const BASE = "https://connect.squareup.com/v2";
 
   const headers = {
@@ -21,10 +21,7 @@ exports.handler = async function (event) {
   function toEasternDate(utcStr) {
     const d = new Date(utcStr);
     const eastern = new Date(d.toLocaleString('en-US', { timeZone: 'America/Detroit' }));
-    const y = eastern.getFullYear();
-    const m = String(eastern.getMonth()+1).padStart(2,'0');
-    const day = String(eastern.getDate()).padStart(2,'0');
-    return `${y}-${m}-${day}`;
+    return `${eastern.getFullYear()}-${String(eastern.getMonth()+1).padStart(2,'0')}-${String(eastern.getDate()).padStart(2,'0')}`;
   }
 
   function getDayName(dateStr) {
@@ -63,27 +60,20 @@ exports.handler = async function (event) {
 
       const TRACKED = { chicken: ['firebird'], lamb: ['lamborghini'], veggie: ['veg engine'] };
       const variationIds = [], idToType = {};
-
       allItems.forEach(item => {
         const itemName = (item.item_data?.name || '').toLowerCase();
         for (const [type, keywords] of Object.entries(TRACKED)) {
           if (keywords.some(k => itemName.includes(k))) {
             (item.item_data?.variations || []).forEach(v => {
-              variationIds.push(v.id);
-              idToType[v.id] = type;
+              variationIds.push(v.id); idToType[v.id] = type;
             });
           }
         }
       });
-
       if (variationIds.length === 0) return {};
-
       const invResult = await squarePost('/inventory/counts/batch-retrieve', {
-        catalog_object_ids: variationIds,
-        location_ids: [LOCATION_ID],
-        states: ['IN_STOCK'],
+        catalog_object_ids: variationIds, location_ids: [LOCATION_ID], states: ['IN_STOCK'],
       });
-
       const counts = {};
       (invResult.counts || []).forEach(c => {
         const type = idToType[c.catalog_object_id];
@@ -93,18 +83,18 @@ exports.handler = async function (event) {
     } catch (e) { return { _error: e.message }; }
   }
 
-  async function getEvents() {
+  // Ticketmaster events
+  async function getTicketmasterEvents() {
+    if (!TM_KEY) return [];
     try {
       const today = new Date();
       const end = new Date(today); end.setDate(end.getDate()+7);
       const startDT = today.toISOString().split('T')[0] + 'T00:00:00Z';
       const endDT = end.toISOString().split('T')[0] + 'T23:59:59Z';
-
-      const url = `https://app.ticketmaster.com/discovery/v2/events.json?apikey=${TM_KEY}&latlong=42.3554,-83.0521&radius=3&unit=miles&startDateTime=${startDT}&endDateTime=${endDT}&size=20&sort=date,asc&locale=*`;
+      const url = `https://app.ticketmaster.com/discovery/v2/events.json?apikey=${TM_KEY}&latlong=42.3554,-83.0521&radius=3&unit=miles&startDateTime=${startDT}&endDateTime=${endDT}&size=30&sort=date,asc&locale=*`;
       const r = await fetch(url);
       const data = await r.json();
       if (!data._embedded?.events) return [];
-
       return data._embedded.events
         .filter(e => {
           const state = e._embedded?.venues?.[0]?.state?.stateCode;
@@ -117,8 +107,88 @@ exports.handler = async function (event) {
           venue: e._embedded?.venues?.[0]?.name || '',
           url: e.url || '',
           category: e.classifications?.[0]?.segment?.name || '',
+          source: 'ticketmaster',
         }));
     } catch(e) { return []; }
+  }
+
+  // Masonic Temple scraper — scrapes themasonic.com/events
+  async function getMasonicEvents() {
+    try {
+      const r = await fetch('https://themasonic.com/events/', {
+        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
+      });
+      const html = await r.text();
+      const events = [];
+      const seen = new Set();
+
+      // Parse JSON-LD structured data (most reliable)
+      const jsonLdMatches = html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g) || [];
+      jsonLdMatches.forEach(block => {
+        try {
+          const json = JSON.parse(block.replace(/<script[^>]*>|<\/script>/g,''));
+          const items = Array.isArray(json) ? json : [json];
+          items.forEach(item => {
+            if (item['@type']==='Event' && item.name && !seen.has(item.name)) {
+              seen.add(item.name);
+              const startDate = item.startDate || '';
+              const d = startDate ? new Date(startDate) : null;
+              events.push({
+                name: item.name,
+                date: d ? toEasternDate(d.toISOString()) : '',
+                time: d ? d.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',timeZone:'America/Detroit'}) : 'TBA',
+                venue: 'Masonic Temple Theatre',
+                url: item.url || 'https://themasonic.com/events/',
+                category: 'Concert / Live Event',
+                source: 'masonic',
+              });
+            }
+          });
+        } catch {}
+      });
+
+      // Fallback: regex parse if JSON-LD not found
+      if (events.length === 0) {
+        const nameMatches = html.matchAll(/"name"\s*:\s*"([^"]{5,80})"/g);
+        const dateMatches = html.matchAll(/"startDate"\s*:\s*"([^"]+)"/g);
+        const names = [...nameMatches].map(m=>m[1]);
+        const dates = [...dateMatches].map(m=>m[1]);
+        const limit = Math.min(names.length, dates.length, 10);
+        for (let i=0; i<limit; i++) {
+          if (seen.has(names[i])) continue;
+          seen.add(names[i]);
+          const d = new Date(dates[i]);
+          events.push({
+            name: names[i],
+            date: toEasternDate(d.toISOString()),
+            time: d.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',timeZone:'America/Detroit'}),
+            venue: 'Masonic Temple Theatre',
+            url: 'https://themasonic.com/events/',
+            category: 'Concert / Live Event',
+            source: 'masonic',
+          });
+        }
+      }
+
+      return events;
+    } catch(e) { return []; }
+  }
+
+  async function getEvents() {
+    const [tmEvents, masonicEvents] = await Promise.all([
+      getTicketmasterEvents(),
+      getMasonicEvents(),
+    ]);
+
+    // Merge — deduplicate by name
+    const seen = new Set(tmEvents.map(e=>e.name.toLowerCase()));
+    const merged = [...tmEvents];
+    masonicEvents.forEach(e => {
+      if (!seen.has(e.name.toLowerCase())) merged.push(e);
+    });
+
+    merged.sort((a,b) => (a.date||'').localeCompare(b.date||''));
+    return { events: merged, masonicScraped: masonicEvents.length > 0, masonicCount: masonicEvents.length };
   }
 
   async function fetchOrders(fromDate, toDate, cursor=null) {
@@ -160,7 +230,6 @@ exports.handler = async function (event) {
         const dn = li.name||'Unknown';
         if (!items[dn]) items[dn] = {qty:0, gross:0};
         items[dn].qty += qty; items[dn].gross += g;
-
         const ptype = getProteinType(dn);
         if (ptype) { byDate[date].proteins+=qty; byDate[date].byType[ptype]+=qty; proteins+=qty; proteinsByType[ptype]+=qty; }
         if (DRINK_KW.some(k=>name.includes(k))) { byDate[date].drinks+=qty; drinks+=qty; }
@@ -186,24 +255,16 @@ exports.handler = async function (event) {
       const last3avg = arr => arr.length>=3 ? avg(arr.slice(-3)) : avg(arr);
       const rev6 = last6.map(d=>d.gross);
       dowAvgs[day] = {
-        avgRevenue: avg(rev6),
-        avgProteins: avg(last6.map(d=>d.proteins)),
+        avgRevenue: avg(rev6), avgProteins: avg(last6.map(d=>d.proteins)),
         avgDrinks: avg(last6.map(d=>d.drinks)),
-        avgByType: {
-          beef: avg(last6.map(d=>d.byType.beef)),
-          chicken: avg(last6.map(d=>d.byType.chicken)),
-          lamb: avg(last6.map(d=>d.byType.lamb)),
-          veggie: avg(last6.map(d=>d.byType.veggie)),
-        },
-        days: last6.length,
-        trend: last6.length>=3 ? last3avg(rev6)/avg(rev6) : 1,
+        avgByType: { beef:avg(last6.map(d=>d.byType.beef)), chicken:avg(last6.map(d=>d.byType.chicken)), lamb:avg(last6.map(d=>d.byType.lamb)), veggie:avg(last6.map(d=>d.byType.veggie)) },
+        days: last6.length, trend: last6.length>=3 ? last3avg(rev6)/avg(rev6) : 1,
         recentDates: last6.map(d=>d.date),
       };
     });
 
     const proteinItems = Object.entries(items)
-      .filter(([n])=>getProteinType(n))
-      .sort((a,b)=>b[1].qty-a[1].qty).slice(0,10)
+      .filter(([n])=>getProteinType(n)).sort((a,b)=>b[1].qty-a[1].qty).slice(0,10)
       .map(([name,d])=>({name, qty:d.qty, gross:Math.round(d.gross), type:getProteinType(name)}));
 
     const dailySummary = Object.entries(byDate)
@@ -221,14 +282,13 @@ exports.handler = async function (event) {
     const isEvents = params.events==="true";
 
     if (isEvents) {
-      const events = await getEvents();
-      return { statusCode:200, headers, body:JSON.stringify({events}) };
+      const result = await getEvents();
+      return { statusCode:200, headers, body:JSON.stringify(result) };
     }
 
     const end = new Date();
     let startStr, endStr;
     endStr = end.toISOString().split('T')[0]+'T23:59:59.999Z';
-
     if (isYtd) {
       startStr = new Date(end.getFullYear(),0,1).toISOString().split('T')[0]+'T00:00:00.000Z';
     } else if (isPrep) {
@@ -241,7 +301,6 @@ exports.handler = async function (event) {
 
     const promises = [getAllOrders(startStr, endStr)];
     if (isPrep) promises.push(getInventoryCounts());
-
     const results = await Promise.all(promises);
     const summary = processOrders(results[0]);
     const inventory = isPrep ? (results[1]||{}) : {};
