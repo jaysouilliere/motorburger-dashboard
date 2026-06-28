@@ -21,8 +21,22 @@ exports.handler = async function (event) {
   };
   const DRINK_KW = ['coca-cola','jarritos','voss'];
 
+  // Convert UTC timestamp to Eastern local date string (handles EST -5 and EDT -4)
+  function toEasternDate(utcStr) {
+    const d = new Date(utcStr);
+    // Eastern time: UTC-5 in winter (EST), UTC-4 in summer (EDT)
+    // Use Intl to get correct offset automatically
+    const eastern = new Date(d.toLocaleString('en-US', { timeZone: 'America/Detroit' }));
+    const y = eastern.getFullYear();
+    const m = String(eastern.getMonth() + 1).padStart(2, '0');
+    const day = String(eastern.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+
   function getDayName(dateStr) {
-    return ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][new Date(dateStr + 'T12:00:00').getDay()];
+    // dateStr is already Eastern local date YYYY-MM-DD
+    const [y, m, d] = dateStr.split('-').map(Number);
+    return ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][new Date(y, m-1, d).getDay()];
   }
 
   function getProteinType(name) {
@@ -43,10 +57,8 @@ exports.handler = async function (event) {
     return r.json();
   }
 
-  // Get inventory by listing ALL catalog items and matching by name
   async function getInventoryCounts() {
     try {
-      // Pull all catalog items (no text search — avoids matching issues)
       let allItems = [], cursor = null;
       do {
         const body = { object_types: ['ITEM'], limit: 100 };
@@ -56,7 +68,6 @@ exports.handler = async function (event) {
         cursor = result.cursor;
       } while (cursor);
 
-      // Find our tracked items by name
       const TRACKED = {
         chicken: ['firebird'],
         lamb: ['lamborghini'],
@@ -78,12 +89,8 @@ exports.handler = async function (event) {
         }
       });
 
-      if (variationIds.length === 0) {
-        console.log('No tracked item variations found in catalog');
-        return {};
-      }
+      if (variationIds.length === 0) return {};
 
-      // Batch retrieve inventory counts
       const invResult = await squarePost('/inventory/counts/batch-retrieve', {
         catalog_object_ids: variationIds,
         location_ids: [LOCATION_ID],
@@ -100,7 +107,6 @@ exports.handler = async function (event) {
 
       return counts;
     } catch (e) {
-      console.error('Inventory fetch error:', e.message);
       return { _error: e.message };
     }
   }
@@ -139,7 +145,8 @@ exports.handler = async function (event) {
     const proteinsByType = { beef: 0, chicken: 0, lamb: 0, veggie: 0 };
 
     (orders || []).forEach(o => {
-      const date = o.created_at.substring(0, 10);
+      // Use Eastern local date, not UTC date
+      const date = toEasternDate(o.created_at);
       if (!byDate[date]) byDate[date] = { gross: 0, proteins: 0, drinks: 0, gokart: 0, byType: { beef:0, chicken:0, lamb:0, veggie:0 } };
       const gross = (o.total_money?.amount || 0) / 100;
       byDate[date].gross += gross;
@@ -168,10 +175,8 @@ exports.handler = async function (event) {
       });
     });
 
-    // Build DOW averages using LAST 6 occurrences of each day only
-    const dow = {};
-    const dowDates = {}; // track dates per day for sorting
-
+    // DOW averages using last 6 occurrences
+    const dowDates = {};
     Object.entries(byDate).forEach(([date, d]) => {
       const day = getDayName(date);
       if (!['Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'].includes(day)) return;
@@ -179,43 +184,27 @@ exports.handler = async function (event) {
       dowDates[day].push({ date, ...d });
     });
 
-    // Sort each day's dates and take last 6
+    const dowAvgs = {};
     Object.entries(dowDates).forEach(([day, dayEntries]) => {
       dayEntries.sort((a,b) => a.date.localeCompare(b.date));
-      const last6 = dayEntries.slice(-6); // last 6 occurrences only
-      dow[day] = {
-        revenue: last6.map(d => d.gross),
-        proteins: last6.map(d => d.proteins),
-        drinks: last6.map(d => d.drinks),
-        byType: {
-          beef:    last6.map(d => d.byType.beef),
-          chicken: last6.map(d => d.byType.chicken),
-          lamb:    last6.map(d => d.byType.lamb),
-          veggie:  last6.map(d => d.byType.veggie),
-        },
-        dates: last6.map(d => d.date),
-      };
-    });
-
-    const dowAvgs = {};
-    Object.entries(dow).forEach(([day, d]) => {
+      const last6 = dayEntries.slice(-6);
       const avg = arr => arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : 0;
-      // Trend: last 3 vs last 6 avg
       const last3avg = arr => arr.length >= 3 ? avg(arr.slice(-3)) : avg(arr);
+      const rev6 = last6.map(d => d.gross);
       dowAvgs[day] = {
-        avgRevenue: avg(d.revenue),
-        avgProteins: avg(d.proteins),
-        avgDrinks: avg(d.drinks),
+        avgRevenue: avg(rev6),
+        avgProteins: avg(last6.map(d => d.proteins)),
+        avgDrinks: avg(last6.map(d => d.drinks)),
         avgByType: {
-          beef:    avg(d.byType.beef),
-          chicken: avg(d.byType.chicken),
-          lamb:    avg(d.byType.lamb),
-          veggie:  avg(d.byType.veggie),
+          beef:    avg(last6.map(d => d.byType.beef)),
+          chicken: avg(last6.map(d => d.byType.chicken)),
+          lamb:    avg(last6.map(d => d.byType.lamb)),
+          veggie:  avg(last6.map(d => d.byType.veggie)),
         },
-        days: d.revenue.length,
-        trend: d.revenue.length >= 3 ? last3avg(d.revenue) / avg(d.revenue) : 1,
-        drinkTrend: d.drinks.length >= 3 ? last3avg(d.drinks) / avg(d.drinks) : 1,
-        recentDates: d.dates,
+        days: last6.length,
+        trend: last6.length >= 3 ? last3avg(rev6) / avg(rev6) : 1,
+        drinkTrend: last6.length >= 3 ? last3avg(last6.map(d=>d.drinks)) / avg(last6.map(d=>d.drinks)) : 1,
+        recentDates: last6.map(d => d.date),
       };
     });
 
@@ -232,25 +221,42 @@ exports.handler = async function (event) {
     return { rev: Math.round(rev), proteins, drinks, proteinsByType, byDate: dailySummary, dowAvgs, proteinItems, gkByDate, orderCount: orders.length };
   }
 
+  // Get Eastern "today" date string for use in date range queries
+  function easternToday() {
+    return new Date().toLocaleString('en-US', { timeZone: 'America/Detroit' }).split(',')[0];
+  }
+
+  // Convert Eastern local date to UTC range for Square API query
+  function easternDateToUTCRange(daysBack) {
+    const end = new Date();
+    const start = new Date();
+    start.setDate(start.getDate() - daysBack);
+    // Add a day buffer on each end to capture all Eastern-time orders regardless of UTC offset
+    start.setDate(start.getDate() - 1);
+    return {
+      start: start.toISOString().split('T')[0] + 'T00:00:00.000Z',
+      end: end.toISOString().split('T')[0] + 'T23:59:59.999Z',
+    };
+  }
+
   try {
     const params = event.queryStringParameters || {};
     const days = parseInt(params.days || "7");
     const isYtd = params.ytd === "true";
     const isPrep = params.prep === "true";
 
-    const end = new Date();
     let startStr, endStr;
-    endStr = end.toISOString().split("T")[0] + "T23:59:59.999Z";
+    const now = new Date();
+    endStr = now.toISOString().split('T')[0] + 'T23:59:59.999Z';
 
     if (isYtd) {
-      startStr = new Date(new Date().getFullYear(), 0, 1).toISOString().split("T")[0] + "T00:00:00.000Z";
+      startStr = new Date(now.getFullYear(), 0, 1).toISOString().split('T')[0] + 'T00:00:00.000Z';
     } else if (isPrep) {
-      // 90 days gives us ~13 of each day of week — more than enough for last 6
-      const s = new Date(); s.setDate(s.getDate() - 90);
-      startStr = s.toISOString().split("T")[0] + "T00:00:00.000Z";
+      const s = new Date(); s.setDate(s.getDate() - 91); // extra day buffer
+      startStr = s.toISOString().split('T')[0] + 'T00:00:00.000Z';
     } else {
-      const s = new Date(); s.setDate(s.getDate() - days);
-      startStr = s.toISOString().split("T")[0] + "T00:00:00.000Z";
+      const s = new Date(); s.setDate(s.getDate() - days - 1); // extra day buffer for timezone
+      startStr = s.toISOString().split('T')[0] + 'T00:00:00.000Z';
     }
 
     const promises = [getAllOrders(startStr, endStr)];
