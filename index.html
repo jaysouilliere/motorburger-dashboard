@@ -23,7 +23,7 @@
   .refresh-btn{background:var(--accent);color:white;border:none;border-radius:var(--radius-sm);padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;}
   .refresh-btn:active{opacity:0.8;}
   .refresh-btn:disabled{opacity:0.5;}
-  .tab-bar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 16px;display:flex;gap:0;}
+  .tab-bar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 16px;display:flex;}
   .tab{padding:12px 16px;font-size:13px;font-weight:500;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;-webkit-tap-highlight-color:transparent;}
   .tab.active{color:var(--accent);border-bottom-color:var(--accent);}
   .date-bar{background:var(--surface);border-bottom:1px solid var(--border);padding:10px 16px;display:flex;gap:8px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
@@ -92,37 +92,42 @@
   .err-card{background:rgba(227,73,72,0.1);border:1px solid rgba(227,73,72,0.3);border-radius:var(--radius);padding:20px;text-align:center;color:var(--red);font-size:14px;line-height:1.7;}
   .err-card b{display:block;font-size:16px;margin-bottom:8px;}
 
-  /* PREP VIEW */
-  .prep-hero{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;margin-bottom:14px;}
+  /* PREP */
+  .pickup-card{background:var(--surface);border:2px solid var(--accent);border-radius:var(--radius);padding:16px;margin-bottom:14px;}
+  .pickup-title{font-size:13px;font-weight:600;color:var(--accent);margin-bottom:12px;display:flex;align-items:center;gap:6px;}
+  .pickup-row{display:flex;align-items:center;padding:9px 0;border-bottom:1px solid var(--border);gap:10px;}
+  .pickup-row:last-child{border-bottom:none;}
+  .pickup-emoji{font-size:18px;width:24px;text-align:center;flex-shrink:0;}
+  .pickup-name{font-size:14px;flex:1;}
+  .pickup-detail{font-size:11px;color:var(--muted);}
+  .pickup-qty{font-size:18px;font-weight:700;min-width:36px;text-align:right;}
+  .pickup-qty.zero{color:var(--green);}
+  .pickup-qty.low{color:var(--accent2);}
+  .pickup-qty.high{color:var(--accent);}
+
+  .prep-hero{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:14px;}
   .prep-day{font-size:22px;font-weight:700;letter-spacing:-0.5px;}
-  .prep-sub{font-size:12px;color:var(--muted);margin-top:4px;}
-  .prep-based{font-size:11px;color:var(--muted);margin-top:8px;padding-top:8px;border-top:1px solid var(--border);}
-  .prep-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
-  .prep-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;}
-  .prep-card.beef{border-left:3px solid var(--accent);}
-  .prep-card.chicken{border-left:3px solid var(--accent2);}
-  .prep-card.lamb{border-left:3px solid var(--blue);}
-  .prep-card.veggie{border-left:3px solid var(--green);}
-  .prep-card.buns{border-left:3px solid var(--muted); grid-column:1/-1;}
-  .prep-card.drinks{border-left:3px solid #9b59b6; grid-column:1/-1;}
-  .prep-protein-icon{font-size:22px;margin-bottom:6px;}
-  .prep-protein-name{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;}
-  .prep-count{font-size:36px;font-weight:700;letter-spacing:-1px;line-height:1;}
-  .prep-count.beef{color:var(--accent);}
-  .prep-count.chicken{color:var(--accent2);}
-  .prep-count.lamb{color:var(--blue);}
-  .prep-count.veggie{color:var(--green);}
-  .prep-count.buns{color:var(--text);}
-  .prep-detail{font-size:11px;color:var(--muted);margin-top:6px;line-height:1.5;}
-  .prep-trend{display:inline-block;font-size:10px;padding:2px 7px;border-radius:10px;margin-top:5px;}
+  .prep-sub{font-size:12px;color:var(--muted);margin-top:3px;}
+  .prep-meta{font-size:11px;color:var(--muted);margin-top:10px;padding-top:10px;border-top:1px solid var(--border);line-height:1.6;}
+  .trend-pill{display:inline-block;font-size:10px;padding:2px 8px;border-radius:10px;margin-left:4px;}
   .trend-up{background:rgba(227,73,72,0.15);color:var(--red);}
   .trend-norm{background:rgba(39,196,132,0.15);color:var(--green);}
-  .trend-down{background:rgba(136,134,128,0.15);color:var(--muted);}
-  .pickup-card{background:var(--surface);border:2px solid var(--accent);border-radius:var(--radius);padding:16px;margin-bottom:14px;}
-  .pickup-title{font-size:13px;font-weight:600;color:var(--accent);margin-bottom:10px;display:flex;align-items:center;gap:6px;}
-  .pickup-item{font-size:14px;padding:6px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;}
-  .pickup-item:last-child{border-bottom:none;}
-  .pickup-qty{font-weight:700;color:var(--text);}
+
+  .prep-table{width:100%;border-collapse:collapse;}
+  .prep-table th{text-align:left;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;padding:0 0 8px;border-bottom:1px solid var(--border);}
+  .prep-table th:not(:first-child){text-align:right;}
+  .prep-table td{padding:11px 0;border-bottom:1px solid var(--border);font-size:14px;}
+  .prep-table td:not(:first-child){text-align:right;}
+  .prep-table tr:last-child td{border-bottom:none;}
+  .inv-badge{font-size:11px;padding:2px 7px;border-radius:8px;margin-left:4px;}
+  .inv-ok{background:rgba(39,196,132,0.15);color:var(--green);}
+  .inv-low{background:rgba(245,166,35,0.15);color:var(--accent2);}
+  .inv-none{background:rgba(136,134,128,0.15);color:var(--muted);}
+  .need-bold{font-weight:700;color:var(--text);}
+  .need-zero{font-weight:700;color:var(--green);}
+
+  .sat-context{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px;margin-bottom:14px;font-size:13px;line-height:1.6;}
+  .sat-context b{font-weight:600;}
 </style>
 </head>
 <body>
@@ -158,18 +163,18 @@
 <script>
 const BENCHMARKS={Tuesday:368,Wednesday:404,Thursday:581,Friday:1238,Saturday:2568,Sunday:1796};
 const ANNUAL_TARGET=352725;
-const BUFFER=1.20; // 20% buffer on all prep
-const TREND_THRESHOLD=1.10; // 10% above avg = trending up
+const BUFFER=1.20;
+const TREND_THRESHOLD=1.10;
 
-let currentDays=7, revChart=null, ytdRev=0;
-let currentTab='today', prepData=null, statsData=null;
+let currentDays=7,revChart=null,ytdRev=0;
+let currentTab='today',prepData=null,prepInventory=null,statsData=null;
 
 function switchTab(tab){
   currentTab=tab;
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   document.getElementById('tab-'+tab).classList.add('active');
   document.getElementById('date-bar-wrap').style.display=tab==='stats'?'block':'none';
-  if(tab==='today'){ if(prepData) renderPrep(prepData); else loadPrep(); }
+  if(tab==='today'){ if(prepData) renderPrep(prepData,prepInventory); else loadPrep(); }
   else { if(statsData) renderStats(statsData); else loadStats(); }
 }
 
@@ -177,153 +182,189 @@ function setRange(days,el){
   currentDays=days;
   document.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));
   el.classList.add('active');
-  statsData=null;
-  loadStats();
+  statsData=null; loadStats();
 }
 
-function refresh(){
-  prepData=null; statsData=null; ytdRev=0;
-  if(currentTab==='today') loadPrep(); else loadStats();
-}
+function refresh(){ prepData=null; prepInventory=null; statsData=null; ytdRev=0;
+  if(currentTab==='today') loadPrep(); else loadStats(); }
 
 function fmt(n){return '$'+Math.round(n).toLocaleString();}
 function fmtD(n){return '$'+Number(n).toFixed(2);}
-function cap(n){return Math.ceil(n);}
+function ceil(n){return Math.ceil(n);}
 
-function getDayName(d){
-  return ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][d.getDay()];
-}
+function getDayName(d){ return ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][d.getDay()]; }
+function getTomorrow(){ const d=new Date(); d.setDate(d.getDate()+1); return d; }
+function getTomorrowName(){ return getDayName(getTomorrow()); }
 
-// PREP VIEW
 async function loadPrep(){
-  setStatus('loading','Calculating today\'s prep...');
+  setStatus('loading','Pulling inventory & sales history...');
   try{
     const res=await fetch('/.netlify/functions/square-proxy?prep=true');
     const payload=await res.json();
     if(payload.error)throw new Error(payload.error);
     prepData=payload.summary;
-    renderPrep(prepData);
-    setStatus('live',`Updated · ${new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})} · based on ${payload.summary.orderCount} orders`);
-  }catch(err){
-    showError(err.message);
-  }
+    prepInventory=payload.inventory||{};
+    renderPrep(prepData,prepInventory);
+    setStatus('live',`Live · ${new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})} · inventory from Square`);
+  }catch(err){ showError(err.message); }
 }
 
-function renderPrep(summary){
-  const today=new Date();
-  const todayName=getDayName(today);
+function renderPrep(summary, inventory){
+  // Tomorrow's day (what to prep for)
+  const tomorrow=getTomorrow();
+  const tomorrowName=getTomorrowName();
+  const todayName=getDayName(new Date());
   const dow=summary.dowAvgs;
-  const dayData=dow[todayName];
+  const dayData=dow[tomorrowName];
+
+  // Today's (Saturday) sales for context
+  const dates=summary.byDate||[];
+  const todayStr=new Date().toISOString().split('T')[0];
+  const todaySales=dates.find(d=>d.date===todayStr);
 
   if(!dayData||dayData.days<1){
-    document.getElementById('content').innerHTML=`<div class="err-card"><b>No history for ${todayName}</b>Not enough ${todayName} data yet to generate prep targets. Check back after a few more ${todayName}s.</div>`;
+    document.getElementById('content').innerHTML=`<div class="err-card"><b>No history for ${tomorrowName}</b>Not enough ${tomorrowName} data yet to generate prep targets.</div>`;
     return;
   }
 
-  // Calculate targets with buffer and trend adjustment
-  const trendMult = dayData.trend > TREND_THRESHOLD ? 1.10 : 1.0;
-  const totalTarget = cap(dayData.avgProteins * BUFFER * trendMult);
-  const bt = dayData.avgByType;
-  const totalAvg = dayData.avgProteins || 1;
+  const trendMult=dayData.trend>TREND_THRESHOLD?1.10:1.0;
+  const totalTarget=ceil(dayData.avgProteins*BUFFER*trendMult);
+  const bt=dayData.avgByType;
+  const totalAvg=dayData.avgProteins||1;
 
-  // Per protein targets — maintain same mix as history, apply buffer + trend
-  const beef   = cap(bt.beef   / totalAvg * totalTarget);
-  const chicken= cap(bt.chicken/ totalAvg * totalTarget);
-  const lamb   = cap(bt.lamb   / totalAvg * totalTarget);
-  const veggie = cap(bt.veggie / totalAvg * totalTarget);
-  const buns   = beef + chicken + lamb + veggie; // 1 bun per protein
-  const drinks = cap(dayData.avgDrinks * BUFFER * trendMult);
+  // Targets
+  const targets={
+    beef:  ceil(bt.beef  /totalAvg*totalTarget),
+    chicken:ceil(bt.chicken/totalAvg*totalTarget),
+    lamb:  ceil(bt.lamb  /totalAvg*totalTarget),
+    veggie:ceil(bt.veggie/totalAvg*totalTarget),
+  };
 
-  const isTrending = dayData.trend > TREND_THRESHOLD;
-  const trendLabel = isTrending ? 'Trending up ↑' : 'Normal pace';
-  const trendClass = isTrending ? 'trend-up' : 'trend-norm';
+  // On-hand from Square inventory (chicken, lamb, veggie only — beef always fresh)
+  const onHand={
+    beef: 0, // always fresh, ignore
+    chicken: Math.round(inventory.chicken||0),
+    lamb:    Math.round(inventory.lamb||0),
+    veggie:  Math.round(inventory.veggie||0),
+  };
 
-  // Yesterday's sales for context
-  const dates=summary.byDate||[];
-  const yesterday=dates[dates.length-1];
+  // What to pick up = target - on hand (min 0)
+  const toPickup={
+    beef:   targets.beef, // always fresh
+    chicken:Math.max(0, targets.chicken - onHand.chicken),
+    lamb:   Math.max(0, targets.lamb    - onHand.lamb),
+    veggie: Math.max(0, targets.veggie  - onHand.veggie),
+  };
+  const totalBuns=targets.beef+targets.chicken+targets.lamb+targets.veggie;
+  const drinks=ceil((dayData.avgDrinks||0)*BUFFER*trendMult);
+  const isTrending=dayData.trend>TREND_THRESHOLD;
 
   let h='';
 
-  // Pick up list — most actionable at top
-  h+=`<div class="pickup-card">
-    <div class="pickup-title">🛒 Pick up today for ${todayName}</div>
-    <div class="pickup-item"><span>🐄 Beef patties</span><span class="pickup-qty">${beef}</span></div>
-    <div class="pickup-item"><span>🍗 Chicken pieces</span><span class="pickup-qty">${chicken}</span></div>
-    <div class="pickup-item"><span>🐑 Lamb patties</span><span class="pickup-qty">${lamb}</span></div>
-    <div class="pickup-item"><span>🥬 Veggie patties</span><span class="pickup-qty">${veggie}</span></div>
-    <div class="pickup-item"><span>🥖 Buns total</span><span class="pickup-qty">${buns}</span></div>
-    <div class="pickup-item"><span>🧃 Drinks to stock</span><span class="pickup-qty">${drinks}</span></div>
-  </div>`;
+  // Today's context if Saturday -> Sunday
+  if(todaySales){
+    const satBench=BENCHMARKS['Saturday']||2568;
+    const vs=((todaySales.gross/satBench-1)*100).toFixed(0);
+    const dir=todaySales.gross>=satBench?'above':'below';
+    h+=`<div class="sat-context">
+      <b>Today (${todayName}):</b> ${fmt(todaySales.gross)} · ${todaySales.proteins} proteins
+      — <span style="color:${todaySales.gross>=satBench?'var(--green)':'var(--accent2)'}">${Math.abs(vs)}% ${dir} your Saturday benchmark</span><br>
+      <span style="color:var(--muted);font-size:12px">Strong Saturdays tend to carry into Sunday — prep targets adjusted accordingly.</span>
+    </div>`;
+  }
 
-  // Day summary
+  // Hero
   h+=`<div class="prep-hero">
-    <div class="prep-day">Today is ${todayName}</div>
-    <div class="prep-sub">${today.toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})}</div>
-    <div class="prep-based">Based on ${dayData.days} previous ${todayName}s · avg ${Math.round(dayData.avgProteins)} proteins · ${fmt(dayData.avgRevenue)} revenue<br>
-    <span class="prep-trend ${trendClass}">${trendLabel}</span>${isTrending?' — last 3 '+todayName+'s running 10%+ above average':''}</div>
+    <div class="prep-day">Prepping for ${tomorrowName} ${tomorrow.toLocaleDateString('en-US',{month:'short',day:'numeric'})}</div>
+    <div class="prep-sub">Based on ${dayData.days} previous ${tomorrowName}s · avg ${Math.round(dayData.avgProteins)} proteins · ${fmt(dayData.avgRevenue)}</div>
+    <div class="prep-meta">
+      <span class="trend-pill ${isTrending?'trend-up':'trend-norm'}">${isTrending?'↑ Trending up':'✓ Normal pace'}</span>
+      ${isTrending?' Last 3 '+tomorrowName+'s running 10%+ above your average — bumped targets an extra 10%':' Last 3 '+tomorrowName+'s in line with your average'}
+    </div>
   </div>`;
 
-  // Protein cards
-  h+=`<div class="sec">Prep Targets (avg + 20% buffer)</div>
-  <div class="prep-grid">
-    <div class="prep-card beef">
-      <div class="prep-protein-icon">🐄</div>
-      <div class="prep-protein-name">Beef</div>
-      <div class="prep-count beef">${beef}</div>
-      <div class="prep-detail">Classic, Deux Chevaux, Flyin' Hawaiian, Go-Kart, FUNGuY<br>Avg ${Math.round(bt.beef)} per ${todayName}</div>
-    </div>
-    <div class="prep-card chicken">
-      <div class="prep-protein-icon">🍗</div>
-      <div class="prep-protein-name">Chicken</div>
-      <div class="prep-count chicken">${chicken}</div>
-      <div class="prep-detail">Firebird only<br>Avg ${Math.round(bt.chicken)} per ${todayName}</div>
-    </div>
-    <div class="prep-card lamb">
-      <div class="prep-protein-icon">🐑</div>
-      <div class="prep-protein-name">Lamb</div>
-      <div class="prep-count lamb">${lamb}</div>
-      <div class="prep-detail">Lamborghini only<br>Avg ${Math.round(bt.lamb)} per ${todayName}</div>
-    </div>
-    <div class="prep-card veggie">
-      <div class="prep-protein-icon">🥬</div>
-      <div class="prep-protein-name">Veggie</div>
-      <div class="prep-count veggie">${veggie}</div>
-      <div class="prep-detail">Veg Engine only<br>Avg ${Math.round(bt.veggie)} per ${todayName}</div>
-    </div>
-    <div class="prep-card buns">
-      <div style="display:flex;align-items:center;gap:12px;">
-        <div>
-          <div class="prep-protein-icon">🥖</div>
-          <div class="prep-protein-name">Buns needed</div>
-          <div class="prep-count buns">${buns}</div>
-        </div>
-        <div class="prep-detail" style="flex:1">1 bun per protein · total of all protein targets<br><br>
-        ${yesterday?`Yesterday (${yesterday.date}): <b style="color:var(--text)">${yesterday.proteins} proteins sold</b> · ${fmt(yesterday.gross)} revenue`:''}
-        </div>
-      </div>
-    </div>
+  // Pick up card
+  h+=`<div class="pickup-card">
+    <div class="pickup-title">🛒 What to pick up today</div>`;
+
+  const rows=[
+    {emoji:'🐄',name:'Beef patties',type:'beef',note:'Always fresh — full target'},
+    {emoji:'🍗',name:'Chicken pieces',type:'chicken',note:`${onHand.chicken} in fridge`},
+    {emoji:'🐑',name:'Lamb patties',type:'lamb',note:`${onHand.lamb} in fridge`},
+    {emoji:'🥬',name:'Veggie patties',type:'veggie',note:`${onHand.veggie} in fridge`},
+    {emoji:'🥖',name:'Buns',type:'buns',note:'1 per protein · total target'},
+    {emoji:'🧃',name:'Drinks to stock',type:'drinks',note:'based on avg attach rate'},
+  ];
+
+  rows.forEach(row=>{
+    let qty,detail,cls;
+    if(row.type==='buns'){ qty=totalBuns; detail=''; cls=qty>100?'high':'low'; }
+    else if(row.type==='drinks'){ qty=drinks; detail=''; cls='low'; }
+    else if(row.type==='beef'){ qty=toPickup.beef; detail=`target: ${targets.beef}`; cls='high'; }
+    else {
+      qty=toPickup[row.type];
+      const have=onHand[row.type];
+      detail=have>0?`${have} on hand → need ${targets[row.type]} total`:`none on hand → need ${targets[row.type]}`;
+      cls=qty===0?'zero':qty<=3?'low':'high';
+    }
+    h+=`<div class="pickup-row">
+      <div class="pickup-emoji">${row.emoji}</div>
+      <div><div class="pickup-name">${row.name}</div><div class="pickup-detail">${detail||row.note}</div></div>
+      <div class="pickup-qty ${cls}">${qty===0?'✓ stocked':qty}</div>
+    </div>`;
+  });
+  h+=`</div>`;
+
+  // Detailed breakdown table
+  h+=`<div class="sec">Full Prep Breakdown</div>
+  <div class="chart-card">
+    <table class="prep-table">
+      <thead><tr><th>Protein</th><th>Target</th><th>On Hand</th><th>Pick Up</th></tr></thead>
+      <tbody>`;
+
+  const proteinRows=[
+    {emoji:'🐄',name:'Beef',type:'beef',tracked:false},
+    {emoji:'🍗',name:'Chicken (Firebird)',type:'chicken',tracked:true},
+    {emoji:'🐑',name:'Lamb (Lamborghini)',type:'lamb',tracked:true},
+    {emoji:'🥬',name:'Veggie (Veg Engine)',type:'veggie',tracked:true},
+  ];
+
+  proteinRows.forEach(p=>{
+    const tgt=targets[p.type];
+    const have=p.tracked?onHand[p.type]:null;
+    const need=p.tracked?toPickup[p.type]:tgt;
+    const haveStr=p.tracked?(have>0?`${have}<span class="inv-badge ${have>=tgt/2?'inv-ok':'inv-low'}">${have>=tgt?'fully stocked':'partial'}</span>`:`0<span class="inv-badge inv-none">none</span>`):`<span class="inv-badge inv-none">fresh daily</span>`;
+    const needStr=(!p.tracked||need>0)?`<span class="need-bold">${need}</span>`:`<span class="need-zero">✓ 0</span>`;
+    h+=`<tr><td>${p.emoji} ${p.name}</td><td>${tgt}</td><td>${haveStr}</td><td>${needStr}</td></tr>`;
+  });
+
+  h+=`<tr style="border-top:2px solid var(--border)">
+    <td style="font-weight:600">🥖 Buns total</td>
+    <td style="font-weight:700">${totalBuns}</td>
+    <td><span class="inv-badge inv-none">check stock</span></td>
+    <td><span class="need-bold">${totalBuns}</span></td>
+  </tr>`;
+  h+=`</tbody></table>
+  <div style="font-size:11px;color:var(--muted);margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
+    On-hand counts pulled live from Square inventory · Beef is always prepped fresh · 20% buffer + ${isTrending?'10% trend boost ':''}applied to all targets
+  </div>
   </div>`;
 
   document.getElementById('content').innerHTML=h;
 }
 
-// STATS VIEW
+// STATS
 async function loadStats(){
   setStatus('loading','Fetching sales data...');
   try{
-    const [res]=await Promise.all([
-      fetch(`/.netlify/functions/square-proxy?days=${currentDays}`),
-      ytdRev===0?loadYtd():Promise.resolve()
-    ]);
+    const res=await fetch(`/.netlify/functions/square-proxy?days=${currentDays}`);
     const payload=await res.json();
     if(payload.error)throw new Error(payload.error);
     if(ytdRev===0)await loadYtd();
     statsData=payload.summary;
     renderStats(statsData);
     setStatus('live',`Live · ${new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})} · ${payload.summary?.orderCount||0} orders`);
-  }catch(err){
-    showError(err.message);
-  }
+  }catch(err){ showError(err.message); }
 }
 
 async function loadYtd(){
@@ -352,25 +393,11 @@ function buildFlags(summary){
 function renderChart(byDate){
   const recent=(byDate||[]).slice(-21);
   const days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-  const cols=recent.map(d=>{
-    const day=days[new Date(d.date+'T12:00:00').getDay()];
-    return day==='Saturday'?'#27c484':day==='Sunday'?'#4a8fe8':day==='Friday'?'#f5a623':'#e8471a';
-  });
+  const cols=recent.map(d=>{const day=days[new Date(d.date+'T12:00:00').getDay()];return day==='Saturday'?'#27c484':day==='Sunday'?'#4a8fe8':day==='Friday'?'#f5a623':'#e8471a';});
   const ctx=document.getElementById('rev-chart');
   if(!ctx)return;
   if(revChart)revChart.destroy();
-  revChart=new Chart(ctx,{
-    type:'bar',
-    data:{labels:recent.map(d=>d.date.slice(5)),datasets:[{data:recent.map(d=>d.gross),backgroundColor:cols,borderRadius:5,borderSkipped:false}]},
-    options:{
-      responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{display:false},tooltip:{callbacks:{title:i=>`${days[new Date(recent[i[0].dataIndex].date+'T12:00:00').getDay()]}, ${recent[i[0].dataIndex].date}`,label:i=>fmt(i.raw)},backgroundColor:'#1a1a1a',titleColor:'#f0ede8',bodyColor:'#888680',borderColor:'#2e2e2e',borderWidth:1}},
-      scales:{
-        x:{ticks:{color:'#888680',font:{size:10},maxRotation:45},grid:{display:false},border:{display:false}},
-        y:{ticks:{color:'#888680',font:{size:11},callback:v=>'$'+(v>=1000?(v/1000).toFixed(0)+'k':v)},grid:{color:'#2e2e2e'},border:{display:false}}
-      }
-    }
-  });
+  revChart=new Chart(ctx,{type:'bar',data:{labels:recent.map(d=>d.date.slice(5)),datasets:[{data:recent.map(d=>d.gross),backgroundColor:cols,borderRadius:5,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{title:i=>`${days[new Date(recent[i[0].dataIndex].date+'T12:00:00').getDay()]}, ${recent[i[0].dataIndex].date}`,label:i=>fmt(i.raw)},backgroundColor:'#1a1a1a',titleColor:'#f0ede8',bodyColor:'#888680',borderColor:'#2e2e2e',borderWidth:1}},scales:{x:{ticks:{color:'#888680',font:{size:10},maxRotation:45},grid:{display:false},border:{display:false}},y:{ticks:{color:'#888680',font:{size:11},callback:v=>'$'+(v>=1000?(v/1000).toFixed(0)+'k':v)},grid:{color:'#2e2e2e'},border:{display:false}}}}});
 }
 
 function renderStats(summary){
@@ -393,83 +420,52 @@ function renderStats(summary){
     <div class="kpi"><div class="kpi-label">Avg ticket</div><div class="kpi-val">${proteins>0?fmtD(rev/proteins):'$0'}</div><div class="kpi-sub">revenue per protein</div></div>
   </div>`;
 
-  h+=`<div class="sec">Protein Breakdown</div>
-  <div class="protein-grid">
+  h+=`<div class="sec">Protein Breakdown</div><div class="protein-grid">
     <div class="ptype-card"><div class="ptype-icon">🐄</div><div class="ptype-val">${pb.beef}</div><div class="ptype-label">Beef</div><div class="ptype-pct">${proteins>0?Math.round(pb.beef/proteins*100):0}%</div></div>
     <div class="ptype-card"><div class="ptype-icon">🍗</div><div class="ptype-val">${pb.chicken}</div><div class="ptype-label">Chicken</div><div class="ptype-pct">${proteins>0?Math.round(pb.chicken/proteins*100):0}%</div></div>
     <div class="ptype-card"><div class="ptype-icon">🐑</div><div class="ptype-val">${pb.lamb}</div><div class="ptype-label">Lamb</div><div class="ptype-pct">${proteins>0?Math.round(pb.lamb/proteins*100):0}%</div></div>
     <div class="ptype-card"><div class="ptype-icon">🥬</div><div class="ptype-val">${pb.veggie}</div><div class="ptype-label">Veggie</div><div class="ptype-pct">${proteins>0?Math.round(pb.veggie/proteins*100):0}%</div></div>
   </div>`;
 
-  if(ytdRev>0){
-    h+=`<div class="kpi full" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:14px;">
-      <div class="kpi-label">2026 Annual tracker — target ${fmt(ANNUAL_TARGET)}</div>
-      <div class="kpi-val ${paceVs>=0?'g':'r'}">${fmt(ytdRev)} YTD</div>
-      <div class="ann-bar-track"><div class="ann-bar-fill" style="width:${ytdPct.toFixed(1)}%"></div></div>
-      <div class="ann-labels"><span>${ytdPct.toFixed(1)}% of target</span><span>Pace: ${fmt(pace)}/yr <span class="${paceVs>=0?'pos':'neg'}">(${paceVs>=0?'+':''}${fmt(paceVs)} vs target)</span></span></div>
-    </div>`;
-  }
+  if(ytdRev>0){h+=`<div class="kpi full" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:14px;">
+    <div class="kpi-label">2026 Annual tracker — target ${fmt(ANNUAL_TARGET)}</div>
+    <div class="kpi-val ${paceVs>=0?'g':'r'}">${fmt(ytdRev)} YTD</div>
+    <div class="ann-bar-track"><div class="ann-bar-fill" style="width:${ytdPct.toFixed(1)}%"></div></div>
+    <div class="ann-labels"><span>${ytdPct.toFixed(1)}% of target</span><span>Pace: ${fmt(pace)}/yr <span class="${paceVs>=0?'pos':'neg'}">(${paceVs>=0?'+':''}${fmt(paceVs)} vs target)</span></span></div>
+  </div>`;}
 
-  if(flags.length){
-    h+=`<div class="sec">Flags & Alerts</div>`;
-    flags.forEach(f=>{h+=`<div class="flag ${f.type}"><div class="flag-icon">${f.icon}</div><div class="flag-text"><b>${f.title}</b>${f.body}</div></div>`;});
-  }
+  if(flags.length){h+=`<div class="sec">Flags & Alerts</div>`;flags.forEach(f=>{h+=`<div class="flag ${f.type}"><div class="flag-icon">${f.icon}</div><div class="flag-text"><b>${f.title}</b>${f.body}</div></div>`;});}
 
-  h+=`<div class="sec">Daily Revenue</div>
-  <div class="chart-card">
-    <div class="chart-title"><span style="color:#27c484">■</span> Sat &nbsp;<span style="color:#4a8fe8">■</span> Sun &nbsp;<span style="color:#f5a623">■</span> Fri &nbsp;<span style="color:#e8471a">■</span> Weekday</div>
-    <div class="chart-wrap" style="height:180px"><canvas id="rev-chart"></canvas></div>
-  </div>`;
+  h+=`<div class="sec">Daily Revenue</div><div class="chart-card"><div class="chart-title"><span style="color:#27c484">■</span> Sat &nbsp;<span style="color:#4a8fe8">■</span> Sun &nbsp;<span style="color:#f5a623">■</span> Fri &nbsp;<span style="color:#e8471a">■</span> Weekday</div><div class="chart-wrap" style="height:180px"><canvas id="rev-chart"></canvas></div></div>`;
 
   h+=`<div class="sec">Day of Week vs Benchmark</div><div class="chart-card"><table class="dow-table"><thead><tr><th>Day</th><th>This period</th><th>Benchmark</th><th>Diff</th></tr></thead><tbody>`;
   ['Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'].forEach(day=>{
-    const d=dowAvgs&&dowAvgs[day];
-    const bench=BENCHMARKS[day];
-    if(d){
-      const pct=((d.avgRevenue/bench-1)*100).toFixed(0);
-      h+=`<tr><td>${day.substring(0,3)}</td><td>${fmt(d.avgRevenue)}</td><td style="color:var(--muted)">${fmt(bench)}</td><td><span class="${d.avgRevenue>=bench?'pos':'neg'}">${d.avgRevenue>=bench?'+':''}${pct}%</span></td></tr>`;
-    }
+    const d=dowAvgs&&dowAvgs[day];const bench=BENCHMARKS[day];
+    if(d){const pct=((d.avgRevenue/bench-1)*100).toFixed(0);h+=`<tr><td>${day.substring(0,3)}</td><td>${fmt(d.avgRevenue)}</td><td style="color:var(--muted)">${fmt(bench)}</td><td><span class="${d.avgRevenue>=bench?'pos':'neg'}">${d.avgRevenue>=bench?'+':''}${pct}%</span></td></tr>`;}
   });
   h+=`</tbody></table></div>`;
 
   h+=`<div class="sec">Item Mix</div><div class="chart-card">`;
   const tagLabels={beef:'Beef',chicken:'Chicken',lamb:'Lamb',veggie:'Veggie'};
-  if(proteinItems&&proteinItems.length){
-    proteinItems.forEach(item=>{
-      const pct=(item.qty/maxQ*100).toFixed(0);
-      h+=`<div class="item-row">
-        <div class="item-name">${item.name}</div>
-        <span class="item-tag tag-${item.type}">${tagLabels[item.type]||''}</span>
-        <div class="item-bar-wrap"><div class="item-bar-track"><div class="item-bar-fill bar-${item.type}" style="width:${pct}%"></div></div></div>
-        <div class="item-qty">${item.qty}</div>
-        <div class="item-rev">${fmt(item.gross)}</div>
-      </div>`;
-    });
-  }
+  if(proteinItems&&proteinItems.length){proteinItems.forEach(item=>{const pct=(item.qty/maxQ*100).toFixed(0);h+=`<div class="item-row"><div class="item-name">${item.name}</div><span class="item-tag tag-${item.type}">${tagLabels[item.type]||''}</span><div class="item-bar-wrap"><div class="item-bar-track"><div class="item-bar-fill bar-${item.type}" style="width:${pct}%"></div></div></div><div class="item-qty">${item.qty}</div><div class="item-rev">${fmt(item.gross)}</div></div>`;});}
   h+=`</div>`;
 
   document.getElementById('content').innerHTML=h;
   setTimeout(()=>renderChart(byDate),50);
 }
 
-function setStatus(state, text){
-  const sdot=document.getElementById('sdot');
-  const stext=document.getElementById('stext');
-  const btn=document.getElementById('rbtn');
-  if(state==='loading'){ sdot.className='sdot'; btn.disabled=true; btn.textContent='Loading...'; }
-  else { sdot.className='sdot live'; btn.disabled=false; btn.textContent='↻ Refresh'; }
+function setStatus(state,text){
+  const sdot=document.getElementById('sdot'),stext=document.getElementById('stext'),btn=document.getElementById('rbtn');
+  if(state==='loading'){sdot.className='sdot';btn.disabled=true;btn.textContent='Loading...';}
+  else{sdot.className='sdot live';btn.disabled=false;btn.textContent='↻ Refresh';}
   stext.textContent=text;
 }
-
 function showError(msg){
   document.getElementById('sdot').className='sdot';
   document.getElementById('stext').textContent='Error — tap Refresh to retry';
-  document.getElementById('rbtn').disabled=false;
-  document.getElementById('rbtn').textContent='↻ Refresh';
+  document.getElementById('rbtn').disabled=false;document.getElementById('rbtn').textContent='↻ Refresh';
   document.getElementById('content').innerHTML=`<div class="err-card"><b>Couldn't load data</b>${msg}</div>`;
 }
-
-// Init — load prep tab first
 loadPrep();
 </script>
 </body>
