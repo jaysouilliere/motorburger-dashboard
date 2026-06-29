@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Motorburger</title>
-<link rel="apple-touch-icon" href="/icon-owner.png">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
   :root{--bg:#0f0f0f;--s1:#1a1a1a;--s2:#222;--bd:#2e2e2e;--tx:#f0ede8;--mu:#888680;--ac:#e8471a;--a2:#f5a623;--gn:#27c484;--rd:#e34948;--bl:#4a8fe8;--fn:-apple-system,'SF Pro Display','Helvetica Neue',sans-serif;--r:12px;--rs:8px;}
@@ -36,7 +35,7 @@
   /* SENSITIVE NUMBER HIDING */
   .sens{display:inline-block;transition:filter .2s;}
   .hidden .sens{filter:blur(6px);user-select:none;-webkit-user-select:none;cursor:pointer;}
-  .hidden .sens:after{content:'';}
+  .hidden .sens:after{content:'';} 
   .reveal-hint{font-size:10px;color:var(--mu);text-align:center;padding:4px 0;display:none;}
   .hidden .reveal-hint{display:block;}
 
@@ -145,12 +144,6 @@
   .evsec{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--mu);margin:12px 0 6px;padding-bottom:6px;border-bottom:1px solid var(--bd);}
   .concflag{background:rgba(232,71,26,.1);border:1px solid rgba(232,71,26,.3);border-radius:10px;padding:12px 14px;margin-bottom:10px;display:flex;gap:10px;}
   .msbadge{font-size:10px;background:rgba(74,143,232,.15);color:var(--bl);padding:2px 7px;border-radius:8px;display:inline-block;margin-left:6px;}
-  .stfcard{background:var(--s1);border:1px solid var(--bl);border-radius:var(--r);padding:14px;margin-bottom:14px;}
-  .stfhdr{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--bl);font-weight:600;margin-bottom:10px;}
-  .stfflags{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;}
-  .stftag{background:rgba(232,71,26,.12);border:1px solid rgba(232,71,26,.3);color:var(--ac);font-size:12px;padding:5px 11px;border-radius:16px;}
-  .stfnotes{font-size:13px;line-height:1.5;margin-top:8px;padding-top:8px;border-top:1px solid var(--bd);}
-  .stfempty{font-size:12px;color:var(--mu);}
 </style>
 </head>
 <body>
@@ -187,7 +180,7 @@
 const BM={Tuesday:368,Wednesday:404,Thursday:581,Friday:1238,Saturday:2568,Sunday:1796};
 const TARGET=352725,BUF=1.20,TREND=1.10;
 let cdays=7,rChart=null,ytdRev=0;
-let ctab='prep',prepD=null,prepInv=null,prepStaff=null,statsD=null,ydayD=null,eventsD=null;
+let ctab='prep',prepD=null,prepInv=null,statsD=null,ydayD=null,eventsD=null;
 let prepDate=null;
 let revealed=true; // default shown — tap eye to hide
 
@@ -250,7 +243,7 @@ function sr(days,el){
 }
 
 function refresh(){
-  prepD=null;prepInv=null;prepStaff=null;statsD=null;ydayD=null;eventsD=null;ytdRev=0;
+  prepD=null;prepInv=null;statsD=null;ydayD=null;eventsD=null;ytdRev=0;
   if(ctab==='prep')loadPrep();
   else if(ctab==='yday')loadYday();
   else if(ctab==='events')loadEvents();
@@ -338,9 +331,9 @@ async function loadPrep(){
     const r=await fetch('/.netlify/functions/square-proxy?prep=true');
     const p=await r.json();
     if(p.error)throw new Error(p.error);
-    prepD=p.summary;prepInv=p.inventory||{};prepStaff=p.staffCloseout||null;
+    prepD=p.summary;prepInv=p.inventory||{};
     if(!eventsD){try{const er=await fetch('/.netlify/functions/square-proxy?events=true');const ep=await er.json();eventsD=ep;}catch{}}
-    renderPrep(prepD,prepInv);
+    renderPrep(prepD,prepInv,p);
     setStatus('live',`Live · ${new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})}`);
   }catch(e){showErr(e.message);}
 }
@@ -359,42 +352,10 @@ function buildDatePicker(){
     const sel=(prepDate===ds||(prepDate===null&&i===1))?'selected':'';
     opts+=`<option value="${ds}" ${sel}>${label}</option>`;
   }
-  return `<div class="dprow"><span class="dplbl">Prep for:</span><select class="dpsel" onchange="prepDate=this.value;renderPrep(prepD,prepInv)">${opts}</select></div>`;
+  return `<div class="dprow"><span class="dplbl">Prep for:</span><select class="dpsel" onchange="prepDate=this.value;renderPrep(prepD,prepInv,null)">${opts}</select></div>`;
 }
 
-function renderStaffCloseout(){
-  if(!prepStaff)return'';
-  const flagged=prepStaff.lowStock||[];
-  const hrs=typeof prepStaff.hoursAgo==='number'?prepStaff.hoursAgo:null;
-  const whenTxt=hrs===null?'recently':(hrs===0?'<1h ago':`${hrs}h ago`);
-  let h=`<div class="stfcard"><div class="stfhdr"><span>📲 Staff close-out · ${whenTxt}</span></div>`;
-  if(flagged.length){
-    h+=`<div class="stfflags">${flagged.map(i=>`<span class="stftag">${i}</span>`).join('')}</div>`;
-  } else {
-    h+=`<div class="stfempty">Nothing flagged — staff reported everything stocked.</div>`;
-  }
-  if(prepStaff.notes){
-    h+=`<div class="stfnotes">📝 ${prepStaff.notes}</div>`;
-  }
-  if(flagged.length){
-    h+=`<button class="sharebtn" onclick="copyStaffFlags(this)">📋 Copy flagged items to text</button>`;
-  }
-  h+=`</div>`;
-  return h;
-}
-
-function copyStaffFlags(btn){
-  if(!prepStaff)return;
-  const items=prepStaff.lowStock||[];
-  let txt=`🔧 PREP / LOW STOCK — staff close-out\n─────────────────\n`;
-  items.forEach(i=>{txt+=`• ${i}\n`;});
-  if(prepStaff.notes)txt+=`─────────────────\n📝 ${prepStaff.notes}\n`;
-  navigator.clipboard.writeText(txt).then(()=>{
-    const old=btn.innerHTML;btn.textContent='✓ Copied!';setTimeout(()=>{btn.innerHTML=old;},2000);
-  }).catch(()=>alert(txt));
-}
-
-function renderPrep(summary,inventory){
+function renderPrep(summary,inventory,payload){
   const td=getTargetDate();
   const tdName=dow(td);
   const tdStr=dateStr(td);
@@ -414,10 +375,8 @@ function renderPrep(summary,inventory){
     }
   }
 
-  const staffHtml=renderStaffCloseout();
-
   if(!dayData||dayData.days<1){
-    document.getElementById('content').innerHTML=buildDatePicker()+concertHtml+staffHtml+`<div class="err"><b>No history for ${tdName}</b>Not enough data yet.</div>`;
+    document.getElementById('content').innerHTML=buildDatePicker()+concertHtml+`<div class="err"><b>No history for ${tdName}</b>Not enough data yet.</div>`;
     return;
   }
 
@@ -433,7 +392,7 @@ function renderPrep(summary,inventory){
   const todaySales=(summary.byDate||[]).find(d=>d.date===todayStr);
   const addons=lsGet('motorburger_addons')||[];
 
-  let h=buildDatePicker()+concertHtml+staffHtml;
+  let h=buildDatePicker()+concertHtml;
 
   if(todaySales){
     const bench=BM[todayName]||0;
@@ -466,6 +425,32 @@ function renderPrep(summary,inventory){
   });
   h+=`<tr style="border-top:2px solid var(--bd)"><td style="font-weight:600">🥖 Buns</td><td style="font-weight:700">${totalBuns}</td><td><span class="ib ibno">check stock</span></td><td><span class="nb">${totalBuns}</span></td></tr>`;
   h+=`</tbody></table><div style="font-size:11px;color:var(--mu);margin-top:10px;padding-top:10px;border-top:1px solid var(--bd)">Build-to targets · 20% buffer${isTrending?' + 10% trend':''} · Inventory from Square</div></div>`;
+
+  // Staff closeout data
+  const sc=payload?.staffCloseout;
+  if(sc){
+    const items911=sc.items911||[];
+    const lowItems=sc.lowItems||[];
+    const allCustom=sc.allLowStock||[];
+    const hoursAgo=sc.hoursAgo||0;
+    const submittedBy=sc.submittedBy||'Staff';
+
+    if(items911.length>0){
+      h+=`<div class="sec">🔴 911 — Order immediately</div>`;
+      items911.forEach(item=>{
+        h+=`<div class="fl d"><div class="fi">🔴</div><div class="fb"><b>${item}</b>Critical — not enough to open. Order today.</div></div>`;
+      });
+    }
+    if(lowItems.length>0){
+      h+=`<div class="sec">🟡 Low stock — Order soon</div>`;
+      lowItems.forEach(item=>{
+        h+=`<div class="fl w"><div class="fi">🟡</div><div class="fb"><b>${item}</b>Running low — order before next service.</div></div>`;
+      });
+    }
+    if(sc.notes){
+      h+=`<div class="sec">Staff notes</div><div class="sc" style="border-left:3px solid var(--a2)">${sc.notes}<div style="font-size:11px;color:var(--mu);margin-top:6px">— ${submittedBy}, ${hoursAgo}h ago</div></div>`;
+    }
+  }
 
   h+=`<div class="sec">Custom add-ons</div><div class="ao">
     <div class="aoi"><input class="aoinp" id="aoinp" type="text" placeholder="e.g. Caramelized onions — pre-cut" onkeydown="if(event.key==='Enter')addAddon()"><button class="aoadd" onclick="addAddon()">+ Add</button></div>
