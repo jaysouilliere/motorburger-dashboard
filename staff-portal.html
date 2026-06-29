@@ -1,0 +1,1059 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Motor Staff</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Motor Staff">
+<style>
+  :root{
+    --bg:#0f0f0f;--s1:#1a1a1a;--s2:#222;--bd:#2e2e2e;
+    --tx:#f0ede8;--mu:#888680;--ac:#e8471a;--a2:#f5a623;
+    --gn:#27c484;--rd:#e34948;--bl:#4a8fe8;--pu:#9b59b6;
+    --fn:-apple-system,'SF Pro Display','Helvetica Neue',sans-serif;
+    --r:14px;--rs:10px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--tx);font-family:var(--fn);min-height:100vh;-webkit-font-smoothing:antialiased;}
+
+  /* HEADER */
+  .hdr{background:var(--s1);border-bottom:1px solid var(--bd);padding:16px 20px;display:flex;align-items:center;justify-content:space-between;}
+  .logo{display:flex;align-items:center;gap:12px;}
+  .lm{width:40px;height:40px;background:var(--ac);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;letter-spacing:-1px;}
+  .ln{font-size:17px;font-weight:700;}.ls{font-size:12px;color:var(--mu);margin-top:2px;}
+  .date-badge{background:var(--s2);border:1px solid var(--bd);border-radius:var(--rs);padding:6px 12px;font-size:12px;color:var(--mu);text-align:right;}
+  .date-day{font-size:15px;font-weight:600;color:var(--tx);}
+
+  .main{padding:20px 20px 80px;max-width:600px;margin:0 auto;}
+
+  /* PIN SCREEN */
+  .pin-screen{text-align:center;padding:30px 0;}
+  .pin-title{font-size:22px;font-weight:700;margin-bottom:6px;}
+  .pin-sub{font-size:14px;color:var(--mu);margin-bottom:30px;}
+  .pin-display{display:flex;gap:12px;justify-content:center;margin-bottom:30px;}
+  .pin-dot{width:18px;height:18px;border-radius:50%;border:2px solid var(--bd);background:var(--s2);transition:all .15s;}
+  .pin-dot.filled{background:var(--ac);border-color:var(--ac);}
+  .pin-dot.error{background:var(--rd);border-color:var(--rd);}
+  .numpad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;max-width:300px;margin:0 auto;}
+  .num-btn{background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);padding:18px;font-size:22px;font-weight:600;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:background .1s;}
+  .num-btn:active{background:var(--s2);}
+  .num-btn.del{font-size:16px;color:var(--mu);}
+  .num-btn.empty{background:transparent;border:none;cursor:default;}
+  .mgr-link{margin-top:24px;font-size:13px;color:var(--mu);cursor:pointer;text-decoration:underline;}
+
+  /* STAFF HOME */
+  .staff-home{}
+  .staff-welcome{background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);padding:20px;margin-bottom:16px;text-align:center;}
+  .staff-name{font-size:24px;font-weight:700;margin-bottom:4px;}
+  .staff-role{font-size:14px;color:var(--mu);}
+  .staff-status{margin-top:12px;padding:10px;background:var(--s2);border-radius:var(--rs);font-size:13px;}
+  .clocked-in{color:var(--gn);}
+  .clocked-out{color:var(--mu);}
+
+  .big-btn{width:100%;border:none;border-radius:var(--r);padding:22px;font-size:18px;font-weight:700;cursor:pointer;margin-bottom:12px;-webkit-tap-highlight-color:transparent;}
+  .btn-in{background:var(--gn);color:#fff;}
+  .btn-out{background:var(--rd);color:#fff;}
+  .btn-secondary{background:var(--s1);border:1px solid var(--bd);color:var(--tx);}
+  .btn-close{background:var(--ac);color:#fff;}
+
+  /* ROLE PICKER */
+  .role-picker{background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);padding:20px;margin-bottom:16px;}
+  .role-picker-title{font-size:16px;font-weight:600;margin-bottom:14px;}
+  .role-option{display:flex;align-items:center;gap:14px;padding:14px;background:var(--s2);border:2px solid var(--bd);border-radius:var(--rs);margin-bottom:10px;cursor:pointer;-webkit-tap-highlight-color:transparent;}
+  .role-option.selected{border-color:var(--ac);}
+  .role-option:last-child{margin-bottom:0;}
+  .role-circle{width:20px;height:20px;border-radius:50%;border:2px solid var(--bd);flex-shrink:0;}
+  .role-option.selected .role-circle{background:var(--ac);border-color:var(--ac);}
+  .role-info{flex:1;}
+  .role-name{font-size:15px;font-weight:600;}
+  .role-rate{font-size:12px;color:var(--mu);margin-top:2px;}
+  .role-tip{font-size:11px;margin-top:3px;}
+  .tip-yes{color:var(--gn);}
+  .tip-no{color:var(--rd);}
+
+  /* GEO */
+  .geo-checking{text-align:center;padding:30px;color:var(--mu);font-size:14px;}
+  .geo-error{background:rgba(227,73,72,.1);border:1px solid rgba(227,73,72,.3);border-radius:var(--r);padding:16px;text-align:center;color:var(--rd);font-size:14px;line-height:1.6;margin-bottom:14px;}
+  .geo-error b{display:block;font-size:16px;margin-bottom:6px;}
+
+  /* TIMESHEET */
+  .ts-row{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--bd);font-size:14px;}
+  .ts-row:last-child{border-bottom:none;}
+  .ts-date{color:var(--mu);font-size:12px;margin-top:2px;}
+  .ts-hours{font-weight:600;color:var(--tx);}
+  .ts-role-badge{font-size:10px;padding:2px 7px;border-radius:8px;}
+  .badge-line{background:rgba(232,71,26,.15);color:var(--ac);}
+  .badge-host{background:rgba(74,143,232,.15);color:var(--bl);}
+  .badge-prep{background:rgba(136,134,128,.15);color:var(--mu);}
+
+  /* MANAGER */
+  .tabs{background:var(--s1);border-bottom:1px solid var(--bd);padding:0 20px;display:flex;overflow-x:auto;scrollbar-width:none;}
+  .tabs::-webkit-scrollbar{display:none;}
+  .tab{padding:12px 14px;font-size:13px;font-weight:500;color:var(--mu);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;flex-shrink:0;}
+  .tab.on{color:var(--ac);border-bottom-color:var(--ac);}
+
+  .card{background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);padding:18px;margin-bottom:14px;}
+  .card-title{font-size:16px;font-weight:700;margin-bottom:4px;}
+  .card-sub{font-size:13px;color:var(--mu);margin-bottom:16px;}
+  .sec{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--mu);margin:18px 0 10px;padding-bottom:8px;border-bottom:1px solid var(--bd);}
+
+  /* STAFF CARDS */
+  .staff-card{background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);padding:16px;margin-bottom:10px;}
+  .staff-card-hdr{display:flex;align-items:center;gap:12px;margin-bottom:12px;}
+  .staff-avatar{width:40px;height:40px;border-radius:10px;background:var(--ac);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;flex-shrink:0;}
+  .staff-card-name{font-size:16px;font-weight:600;}
+  .staff-card-pin{font-size:12px;color:var(--mu);margin-top:2px;}
+  .role-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--bd);font-size:13px;}
+  .role-row:last-child{border-bottom:none;}
+
+  /* PAY PERIOD */
+  .pp-controls{display:flex;gap:8px;margin-bottom:16px;}
+  .pp-input{background:var(--s2);border:1px solid var(--bd);border-radius:var(--rs);padding:8px 12px;font-size:13px;color:var(--tx);flex:1;outline:none;}
+  .pp-btn{background:var(--ac);color:#fff;border:none;border-radius:var(--rs);padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;}
+  .pp-staff-row{background:var(--s2);border-radius:var(--rs);padding:14px;margin-bottom:8px;}
+  .pp-staff-name{font-size:15px;font-weight:600;margin-bottom:8px;}
+  .pp-detail{display:flex;justify-content:space-between;font-size:13px;padding:4px 0;border-bottom:1px solid var(--bd);}
+  .pp-detail:last-child{border-bottom:none;}
+  .pp-detail-label{color:var(--mu);}
+  .pp-detail-val{font-weight:600;}
+  .pp-total{color:var(--gn);}
+  .pp-summary{background:var(--s1);border:2px solid var(--ac);border-radius:var(--r);padding:16px;margin-bottom:14px;}
+  .pp-summary-row{display:flex;justify-content:space-between;padding:6px 0;font-size:14px;border-bottom:1px solid var(--bd);}
+  .pp-summary-row:last-child{border-bottom:none;}
+
+  /* CLOSE OUT FLOW */
+  .steps{display:flex;padding:14px 20px;gap:0;background:var(--s1);border-bottom:1px solid var(--bd);}
+  .step{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;position:relative;}
+  .step:not(:last-child):after{content:'';position:absolute;top:16px;right:-50%;width:100%;height:2px;background:var(--bd);z-index:0;}
+  .step.done:not(:last-child):after{background:var(--gn);}
+  .step-circle{width:32px;height:32px;border-radius:50%;border:2px solid var(--bd);background:var(--s2);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:var(--mu);position:relative;z-index:1;}
+  .step.active .step-circle{border-color:var(--ac);background:var(--ac);color:#fff;}
+  .step.done .step-circle{border-color:var(--gn);background:var(--gn);color:#fff;}
+  .step-label{font-size:10px;color:var(--mu);text-align:center;white-space:nowrap;}
+  .step.active .step-label{color:var(--ac);}
+  .step.done .step-label{color:var(--gn);}
+  .progress-wrap{background:var(--bd);border-radius:4px;height:4px;margin-bottom:20px;overflow:hidden;}
+  .progress-bar{height:100%;border-radius:4px;background:var(--ac);transition:width .3s;}
+
+  /* INVENTORY */
+  .protein-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;}
+  .protein-item{background:var(--s2);border:2px solid var(--bd);border-radius:var(--r);padding:14px 12px;text-align:center;transition:border-color .2s;}
+  .protein-item.has-value{border-color:var(--gn);}
+  .protein-emoji{font-size:26px;margin-bottom:6px;}
+  .protein-name{font-size:12px;color:var(--mu);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;}
+  .protein-input{width:100%;background:var(--bg);border:1px solid var(--bd);border-radius:var(--rs);padding:10px;font-size:24px;font-weight:700;color:var(--tx);text-align:center;outline:none;}
+  .protein-input:focus{border-color:var(--ac);}
+  .protein-hint{font-size:10px;color:var(--mu);margin-top:5px;}
+
+  /* LOW STOCK */
+  .lowstock-section{margin-bottom:16px;}
+  .lowstock-label{font-size:13px;font-weight:600;color:var(--tx);margin-bottom:10px;}
+  .lowstock-grid{display:flex;flex-wrap:wrap;gap:8px;}
+  .ls-tag{background:var(--s2);border:1px solid var(--bd);border-radius:20px;padding:8px 14px;font-size:13px;color:var(--mu);cursor:pointer;-webkit-tap-highlight-color:transparent;transition:all .15s;}
+  .ls-tag.low{background:rgba(245,166,35,.15);border-color:var(--a2);color:var(--a2);}
+  .ls-tag.e911{background:rgba(227,73,72,.15);border-color:var(--rd);color:var(--rd);font-weight:700;}
+  .ls-custom{display:flex;gap:8px;margin-top:8px;}
+  .ls-inp{background:var(--s2);border:1px solid var(--bd);border-radius:var(--rs);padding:10px 14px;font-size:14px;color:var(--tx);flex:1;outline:none;}
+  .ls-add{background:var(--s2);border:1px solid var(--bd);border-radius:var(--rs);padding:10px 16px;font-size:14px;color:var(--tx);cursor:pointer;}
+
+  /* CHECKLIST */
+  .checklist-group{margin-bottom:20px;}
+  .checklist-group-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--mu);margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--bd);}
+  .check-item{display:flex;align-items:center;gap:14px;padding:14px 0;border-bottom:1px solid var(--bd);}
+  .check-item:last-child{border-bottom:none;}
+  .check-text{font-size:15px;flex:1;line-height:1.4;}
+  .check-note{font-size:11px;color:var(--mu);margin-top:2px;}
+  .check-actions{display:flex;gap:6px;}
+  .cact{width:36px;height:36px;border-radius:8px;border:1px solid var(--bd);background:var(--s2);display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;}
+
+  /* NOTES */
+  .notes-inp{width:100%;background:var(--s2);border:1px solid var(--bd);border-radius:var(--rs);padding:14px;font-size:14px;color:var(--tx);min-height:100px;outline:none;resize:none;line-height:1.5;}
+
+  /* SUCCESS */
+  .success{text-align:center;padding:40px 20px;}
+  .success-icon{font-size:64px;margin-bottom:16px;}
+  .success-title{font-size:24px;font-weight:700;margin-bottom:8px;}
+  .success-sub{font-size:14px;color:var(--mu);line-height:1.6;margin-bottom:24px;}
+
+  .submit-btn{width:100%;background:var(--ac);color:#fff;border:none;border-radius:var(--r);padding:18px;font-size:17px;font-weight:700;cursor:pointer;margin-top:8px;}
+  .back-btn{width:100%;background:var(--s2);color:var(--tx);border:1px solid var(--bd);border-radius:var(--r);padding:14px;font-size:15px;font-weight:600;cursor:pointer;margin-top:10px;}
+
+  .edit-btn{background:none;border:1px solid var(--bd);border-radius:var(--rs);padding:4px 10px;font-size:12px;color:var(--mu);cursor:pointer;}
+  .sel{background:var(--s2);border:1px solid var(--bd);border-radius:var(--rs);padding:8px 12px;font-size:13px;color:var(--tx);width:100%;outline:none;margin-top:6px;}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div class="logo">
+    <div class="lm">MS</div>
+    <div><div class="ln">Motor Staff</div><div class="ls">Motorburger · DSC</div></div>
+  </div>
+  <div class="date-badge">
+    <div class="date-day" id="hdr-day"></div>
+    <div id="hdr-date"></div>
+  </div>
+</div>
+
+<div id="tabs-bar" style="display:none">
+  <div class="tabs">
+    <div class="tab on" id="mtab-ts" onclick="mgrTab('ts')">⏱ Timesheets</div>
+    <div class="tab" id="mtab-pay" onclick="mgrTab('pay')">💰 Pay Period</div>
+    <div class="tab" id="mtab-team" onclick="mgrTab('team')">👥 Team</div>
+  </div>
+</div>
+
+<div id="main"></div>
+
+<script>
+// ── CONFIG ──
+const DSC_LAT = 42.3554;
+const DSC_LNG = -83.0521;
+const GEO_RADIUS_M = 75;
+const OWNER_PIN = '202020';
+
+const STAFF = [
+  {
+    id:'brian', name:'Brian Rockwood', initials:'BR',
+    pin: null, // set by birth month/year
+    roles:[
+      {id:'line',name:'Line Cook',rate:16,tips:true},
+    ]
+  },
+  {
+    id:'mitch', name:'Mitchell Wayne', initials:'MW',
+    pin: null,
+    roles:[
+      {id:'line',name:'Line Cook',rate:17,tips:true},
+    ]
+  },
+  {
+    id:'tory', name:'Victoria Martinez', initials:'VM',
+    pin: null,
+    roles:[
+      {id:'line',name:'Line Cook',rate:15,tips:true},
+      {id:'host',name:'Host',rate:15,tips:true},
+    ]
+  },
+  {
+    id:'brandy', name:'Brandy Cook', initials:'BC',
+    pin: null,
+    roles:[
+      {id:'line',name:'Line Cook',rate:15,tips:true},
+    ]
+  },
+];
+
+const LOW_STOCK_CATEGORIES = [
+  { label: '🧴 Sauces', items: ['Fire Sauce','BG Aioli','Veg Sauce','Motor Sauce'] },
+  { label: '🍳 Line Items', items: ['Bacon','Mushrooms','Bacon Jam','Carms','Fire Peppers','Nachos','Cheese Slice','Line Onion Slice','Pico'] },
+  { label: '🔪 Preliminary Prep', items: ['Carm Prep','BJ Prep','Grill Sliders','Slider Veg'] },
+];
+const LOW_STOCK_ITEMS = LOW_STOCK_CATEGORIES.flatMap(c=>c.items);
+
+const CHECKLIST = {
+  protein_line:{group:'🥩 Protein Line',items:[
+    {id:'pl1',text:'Grill cleaned and scraped',note:'Both sides, while still warm'},
+    {id:'pl2',text:'Proteins wrapped, labelled and in walk-in',note:'Date + protein type on each'},
+    {id:'pl3',text:'Firebird patties counted and stored'},
+    {id:'pl4',text:'Lamb patties counted and stored'},
+    {id:'pl5',text:'Veggie patties counted and stored'},
+  ]},
+  topping_table:{group:'🥬 Topping Table',items:[
+    {id:'tt1',text:'All toppings covered and refrigerated'},
+    {id:'tt2',text:'Sauces capped and stored',note:'Check all squeeze bottles'},
+    {id:'tt3',text:'Carms stored and labelled with date'},
+    {id:'tt4',text:'Topping table wiped down'},
+  ]},
+  station:{group:'🧹 Station & Equipment',items:[
+    {id:'st1',text:'Fryer oil checked — good for tomorrow?',note:'Flag in notes if needs changing'},
+    {id:'st2',text:'All surfaces wiped and sanitized'},
+    {id:'st3',text:'Floor swept and mopped'},
+    {id:'st4',text:'Trash taken out',note:'All bins emptied'},
+    {id:'st5',text:'Hand washing station stocked',note:'Soap + paper towels'},
+  ]},
+  foh:{group:'💰 Front of House & POS',items:[
+    {id:'fh1',text:'Square POS closed out'},
+    {id:'fh2',text:'Counter wiped down'},
+  ]},
+  closing:{group:'🔒 Final Close',items:[
+    {id:'cl1',text:'Walk-in fridge checked and locked'},
+    {id:'cl2',text:'All equipment turned off',note:'Fryer, heat lamps, lights'},
+    {id:'cl3',text:'Container window closed/secured'},
+  ]},
+};
+
+// ── STATE ──
+const TODAY = new Date();
+const DAY_NAMES = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+document.getElementById('hdr-day').textContent = DAY_NAMES[TODAY.getDay()];
+document.getElementById('hdr-date').textContent = TODAY.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+
+let appState = 'pin'; // pin | role | geo | staff_home | closeout | manager
+let currentStaff = null;
+let currentRole = null;
+let mgrView = 'ts';
+let pinEntry = '';
+let pinError = false;
+
+// Close-out state
+let coStep = 1;
+let coState = {
+  inventory:{chicken:'',lamb:'',veggie:'',beef_cases:'',bun_packs:''},
+  lowStock:[],customLowStock:[],checklist:{},notes:'',
+};
+
+// Timesheets stored in localStorage
+function lsGet(k){try{return JSON.parse(localStorage.getItem(k)||'null');}catch{return null;}}
+function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch{}}
+function getShifts(){return lsGet('mb_shifts')||[];}
+function saveShift(shift){const s=getShifts();s.push(shift);lsSet('mb_shifts',s);}
+function updateShift(id,updates){const s=getShifts();const i=s.findIndex(x=>x.id===id);if(i>=0){s[i]={...s[i],...updates};lsSet('mb_shifts',s);}return getShifts();}
+function getStaffPin(staff){return lsGet('mb_pin_'+staff.id)||null;}
+function setStaffPin(staffId,pin){lsSet('mb_pin_'+staffId,pin);}
+
+function getActiveShift(staffId){
+  return getShifts().find(s=>s.staffId===staffId&&!s.clockOut);
+}
+
+function fmt2(n){return n.toString().padStart(2,'0');}
+function fmtTime(iso){
+  const d=new Date(iso);
+  return d.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+}
+function fmtDate(iso){
+  const d=new Date(iso);
+  return d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+}
+function hoursWorked(clockIn,clockOut){
+  return ((new Date(clockOut)-new Date(clockIn))/3600000).toFixed(2);
+}
+function distanceM(lat1,lng1,lat2,lng2){
+  const R=6371000;
+  const dLat=(lat2-lat1)*Math.PI/180;
+  const dLng=(lng2-lng1)*Math.PI/180;
+  const a=Math.sin(dLat/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+
+// ── RENDER ──
+function render(){
+  const main=document.getElementById('main');
+  document.getElementById('tabs-bar').style.display=appState==='manager'?'block':'none';
+  if(appState==='pin') renderPin(main);
+  else if(appState==='role') renderRole(main);
+  else if(appState==='geo') renderGeo(main);
+  else if(appState==='staff_home') renderStaffHome(main);
+  else if(appState==='closeout') renderCloseout(main);
+  else if(appState==='manager') renderManager(main);
+}
+
+// ── PIN ──
+function renderPin(main){
+  const dots=Array(6).fill(0).map((_,i)=>`<div class="pin-dot ${i<pinEntry.length?(pinError?'error':'filled'):''}"></div>`).join('');
+  main.innerHTML=`<div class="main"><div class="pin-screen">
+    <div class="pin-title">Welcome to Motor Staff</div>
+    <div class="pin-sub">${pinError?'<span style="color:var(--rd)">Incorrect PIN — try again</span>':'Enter your 6-digit PIN'}</div>
+    <div class="pin-display">${dots}</div>
+    <div class="numpad">
+      ${[1,2,3,4,5,6,7,8,9,'','0','⌫'].map(n=>`
+        <div class="num-btn ${n===''?'empty':n==='⌫'?'del':''}" onclick="pinTap('${n}')">${n}</div>
+      `).join('')}
+    </div>
+    <div class="mgr-link" onclick="showMgrPin()">Manager access</div>
+  </div></div>`;
+}
+
+function pinTap(val){
+  if(val==='') return;
+  if(val==='⌫'){pinEntry=pinEntry.slice(0,-1);pinError=false;render();return;}
+  if(pinEntry.length>=6) return;
+  pinEntry+=val;
+  pinError=false;
+  render();
+  if(pinEntry.length===6) setTimeout(checkPin,100);
+}
+
+function checkPin(){
+  if(pinEntry===OWNER_PIN){pinEntry='';pinError=false;appState='manager';render();return;}
+  const extraStaff=lsGet('mb_extra_staff')||[];
+  const allStaff=[...STAFF,...extraStaff];
+  const staff=allStaff.find(s=>getStaffPin(s)===pinEntry);
+  if(staff){
+    currentStaff=staff;pinEntry='';pinError=false;
+    if(staff.roles.length>1){appState='role';}
+    else{currentRole=staff.roles[0];appState='staff_home';}
+    render();return;
+  }
+  pinError=true;setTimeout(()=>{pinEntry='';pinError=false;render();},1200);
+  render();
+}
+
+function showMgrPin(){
+  // Prompt for owner PIN via numpad — reuse pin flow with flag
+  pinEntry='';pinError=false;appState='pin';
+  render();
+}
+
+// ── ROLE PICKER ──
+function renderRole(main){
+  main.innerHTML=`<div class="main">
+    <div class="staff-welcome">
+      <div class="staff-name">Hi ${currentStaff.name.split(' ')[0]}!</div>
+      <div class="staff-role">Select your role for this shift</div>
+    </div>
+    <div class="role-picker">
+      <div class="role-picker-title">Clocking in as:</div>
+      ${currentStaff.roles.map(r=>`
+        <div class="role-option ${currentRole?.id===r.id?'selected':''}" onclick="selectRole('${r.id}')">
+          <div class="role-circle"></div>
+          <div class="role-info">
+            <div class="role-name">${r.name}</div>
+            <div class="role-rate">$${r.rate}/hr</div>
+            <div class="role-tip ${r.tips?'tip-yes':'tip-no'}">${r.tips?'✓ Tip share eligible':'✗ No tip share'}</div>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+    <button class="big-btn btn-in" onclick="confirmRole()" ${!currentRole?'disabled style="opacity:.5"':''}>Continue →</button>
+    <button class="big-btn btn-secondary" onclick="goBack()">← Back</button>
+  </div>`;
+}
+
+function selectRole(roleId){
+  currentRole=currentStaff.roles.find(r=>r.id===roleId);
+  render();
+}
+
+function confirmRole(){
+  if(!currentRole) return;
+  appState='staff_home';
+  render();
+}
+
+// ── GEO CHECK ──
+function checkGeoAndClockIn(){
+  appState='geo';render();
+  if(!navigator.geolocation){doClockIn();return;}
+  navigator.geolocation.getCurrentPosition(
+    pos=>{
+      const dist=distanceM(pos.coords.latitude,pos.coords.longitude,DSC_LAT,DSC_LNG);
+      if(dist<=GEO_RADIUS_M){doClockIn();}
+      else{showGeoError(Math.round(dist));}
+    },
+    err=>{
+      // If geo denied, allow with warning
+      doClockIn(true);
+    },
+    {enableHighAccuracy:true,timeout:10000,maximumAge:0}
+  );
+}
+
+function showGeoError(distM){
+  const main=document.getElementById('main');
+  main.innerHTML=`<div class="main">
+    <div class="geo-error"><b>You're not at DSC</b>You appear to be ${distM}m away. You must be at the restaurant to clock in.<br><br>If you believe this is an error, contact Jay.</div>
+    <button class="big-btn btn-secondary" onclick="appState='staff_home';render()">← Back</button>
+  </div>`;
+}
+
+function doClockIn(geoSkipped=false){
+  const shift={
+    id: Date.now().toString(),
+    staffId: currentStaff.id,
+    staffName: currentStaff.name,
+    roleId: currentRole.id,
+    roleName: currentRole.name,
+    rate: currentRole.rate,
+    tips: currentRole.tips,
+    clockIn: new Date().toISOString(),
+    clockOut: null,
+    geoSkipped,
+    date: new Date().toLocaleDateString('en-CA',{timeZone:'America/Detroit'}),
+  };
+  saveShift(shift);
+  appState='staff_home';
+  render();
+}
+
+function doClockOut(){
+  const active=getActiveShift(currentStaff.id);
+  if(!active) return;
+  updateShift(active.id,{clockOut:new Date().toISOString()});
+  appState='staff_home';
+  render();
+}
+
+// ── STAFF HOME ──
+function renderStaffHome(main){
+  const active=getActiveShift(currentStaff.id);
+  const todayStr=new Date().toLocaleDateString('en-CA',{timeZone:'America/Detroit'});
+  const todayShifts=getShifts().filter(s=>s.staffId===currentStaff.id&&s.date===todayStr&&s.clockOut);
+  const todayHours=todayShifts.reduce((a,s)=>a+parseFloat(hoursWorked(s.clockIn,s.clockOut)),0);
+
+  main.innerHTML=`<div class="main">
+    <div class="staff-welcome">
+      <div class="staff-name">${currentStaff.name.split(' ')[0]}</div>
+      <div class="staff-role">${currentRole?.name||''} · $${currentRole?.rate||0}/hr · ${currentRole?.tips?'<span style="color:var(--gn)">Tip share ✓</span>':'<span style="color:var(--rd)">No tip share</span>'}</div>
+      <div class="staff-status">
+        ${active
+          ? `<span class="clocked-in">🟢 Clocked in at ${fmtTime(active.clockIn)}</span>`
+          : `<span class="clocked-out">⚪ Not clocked in${todayHours>0?' · '+todayHours.toFixed(2)+' hrs today':''}</span>`
+        }
+      </div>
+    </div>
+    ${active
+      ? `<button class="big-btn btn-out" onclick="doClockOut()">🔴 Clock Out</button>`
+      : `<button class="big-btn btn-in" onclick="checkGeoAndClockIn()">🟢 Clock In</button>`
+    }
+    ${currentStaff.roles.length>1&&active
+      ? `<button class="big-btn btn-secondary" onclick="switchRole()">Switch Role (clock out first)</button>`
+      : currentStaff.roles.length>1
+      ? `<button class="big-btn btn-secondary" onclick="appState='role';render()">Change Role</button>`
+      : ''
+    }
+    <button class="big-btn btn-close" onclick="startCloseout()">📋 Start Close-Out</button>
+    <button class="big-btn btn-secondary" onclick="logout()">Log Out</button>
+
+    <div class="sec">My shifts today</div>
+    <div class="card">
+      ${todayShifts.length===0&&!active
+        ? '<div style="color:var(--mu);font-size:13px">No completed shifts today</div>'
+        : ''
+      }
+      ${active?`<div class="ts-row"><div><div style="font-weight:600">${active.roleName}</div><div class="ts-date">In: ${fmtTime(active.clockIn)} · In progress</div></div><div class="ts-hours clocked-in">Active</div></div>`:''}
+      ${todayShifts.map(s=>`
+        <div class="ts-row">
+          <div>
+            <div style="font-weight:600">${s.roleName}</div>
+            <div class="ts-date">${fmtTime(s.clockIn)} – ${fmtTime(s.clockOut)}</div>
+          </div>
+          <div class="ts-hours">${hoursWorked(s.clockIn,s.clockOut)} hrs</div>
+        </div>
+      `).join('')}
+    </div>
+  </div>`;
+}
+
+function switchRole(){alert('Clock out first, then clock back in with the new role.');}
+function logout(){currentStaff=null;currentRole=null;appState='pin';render();}
+function goBack(){
+  if(appState==='role'){appState='pin';currentStaff=null;currentRole=null;}
+  render();
+}
+
+function startCloseout(){
+  coStep=1;
+  coState={inventory:{chicken:'',lamb:'',veggie:'',beef_cases:'',bun_packs:''},lowStock:{},customLowStock:[],checklist:{},notes:''};
+  appState='closeout';
+  render();
+}
+
+// ── CLOSE-OUT ──
+function renderCloseout(main){
+  // Steps bar
+  const stepsHtml=`<div class="steps">
+    ${['Inventory','Low Stock','Checklist','Notes'].map((l,i)=>`
+      <div class="step ${i+1<coStep?'done':i+1===coStep?'active':''}" >
+        <div class="step-circle">${i+1<coStep?'✓':i+1}</div>
+        <div class="step-label">${l}</div>
+      </div>
+    `).join('')}
+  </div>`;
+
+  let content='';
+  if(coStep===1) content=renderCoInventory();
+  else if(coStep===2) content=renderCoLowStock();
+  else if(coStep===3) content=renderCoChecklist();
+  else if(coStep===4) content=renderCoNotes();
+  else if(coStep===5){renderCoSuccess(main);return;}
+
+  main.innerHTML=stepsHtml+`<div class="main">${content}</div>`;
+}
+
+function renderCoInventory(){
+  const proteins=[
+    {key:'chicken',emoji:'🍗',name:'Firebird Patties',hint:'Chicken patties in fridge'},
+    {key:'lamb',emoji:'🐑',name:'Lamb Patties',hint:'Lamborghini patties in fridge'},
+    {key:'veggie',emoji:'🥬',name:'Veg Patties',hint:'Veg Engine patties in fridge'},
+    {key:'beef_cases',emoji:'🐄',name:'Beef Boxes',hint:'Sealed boxes in walk-in'},
+    {key:'bun_packs',emoji:'🥖',name:'Bun Bags',hint:'Unopened bags remaining'},
+  ];
+  return `<div class="progress-wrap"><div class="progress-bar" style="width:25%"></div></div>
+  <div class="card">
+    <div class="card-title">End of service counts</div>
+    <div class="card-sub">Count remaining inventory and enter exact numbers. Goes straight to the prep list.</div>
+    <div class="protein-grid">
+      ${proteins.map(p=>`
+        <div class="protein-item ${coState.inventory[p.key]!==''?'has-value':''}" id="pi-${p.key}">
+          <div class="protein-emoji">${p.emoji}</div>
+          <div class="protein-name">${p.name}</div>
+          <input class="protein-input" type="number" inputmode="numeric" pattern="[0-9]*" min="0" max="999"
+            placeholder="0" value="${coState.inventory[p.key]}"
+            oninput="coState.inventory['${p.key}']=this.value;document.getElementById('pi-${p.key}').className='protein-item'+(this.value!==''?' has-value':'')">
+          <div class="protein-hint">${p.hint}</div>
+        </div>
+      `).join('')}
+    </div>
+  </div>
+  <button class="submit-btn" onclick="coStep=2;renderCloseout(document.getElementById('main'))">Next: Low Stock →</button>`;
+}
+
+function renderCoLowStock(){
+  const catHtml=LOW_STOCK_CATEGORIES.map(cat=>`
+    <div class="lowstock-section">
+      <div class="lowstock-label">${cat.label}</div>
+      <div class="lowstock-grid">
+        ${cat.items.map(item=>{
+          const st=coState.lowStock[item]||null;
+          const cls=st==='911'?'e911':st==='low'?'low':'';
+          const txt=st==='911'?item+' 🔴':item;
+          return `<div class="ls-tag ${cls}" onclick="toggleLS('${item}',this)" title="${st==='low'?'Low stock':st==='911'?'CRITICAL — 911':'Tap: Low, Tap again: 911'}">${txt}</div>`;
+        }).join('')}
+      </div>
+    </div>
+  `).join('');
+  return `<div class="progress-wrap"><div class="progress-bar" style="width:50%"></div></div>
+  <div class="card">
+    <div class="card-title">What's low or needs prep?</div>
+    <div class="card-sub">Tap once = 🟡 Low (order soon) · Tap twice = 🔴 911 (critical, can't open without it) · Tap again to clear</div>
+    ${catHtml}
+    <div class="lowstock-section">
+      <div class="lowstock-label">Anything else?</div>
+      <div class="ls-custom">
+        <input class="ls-inp" id="ls-inp" type="text" placeholder="Type item...">
+        <button class="ls-add" onclick="addCustomLS()">+ Add</button>
+      </div>
+      <div id="custom-ls-list" style="margin-top:8px">
+        ${coState.customLowStock.map((item,i)=>`
+          <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--bd);font-size:14px">
+            <span style="flex:1">${item}</span>
+            <button onclick="removeCustomLS(${i})" style="background:none;border:none;color:var(--mu);cursor:pointer;font-size:16px">✕</button>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  </div>
+  <button class="submit-btn" onclick="coStep=3;renderCloseout(document.getElementById('main'))">Next: Checklist →</button>
+  <button class="back-btn" onclick="coStep=1;renderCloseout(document.getElementById('main'))">← Back</button>`;
+}
+
+function toggleLS(item,el){
+  const current=coState.lowStock[item]||null;
+  if(!current){coState.lowStock[item]='low';el.className='ls-tag low';el.title='Low stock';}
+  else if(current==='low'){coState.lowStock[item]='911';el.className='ls-tag e911';el.textContent=item+' 🔴';}
+  else{delete coState.lowStock[item];el.className='ls-tag';el.textContent=item;}
+}
+function addCustomLS(){
+  const inp=document.getElementById('ls-inp');
+  const val=(inp.value||'').trim();if(!val)return;
+  coState.customLowStock.push(val);inp.value='';
+  renderCloseout(document.getElementById('main'));
+}
+function removeCustomLS(i){coState.customLowStock.splice(i,1);renderCloseout(document.getElementById('main'));}
+
+function renderCoChecklist(){
+  const total=Object.values(CHECKLIST).reduce((a,g)=>a+g.items.length,0);
+  const done=Object.values(coState.checklist).filter(v=>v).length;
+  let checkHtml='';
+  Object.values(CHECKLIST).forEach(group=>{
+    checkHtml+=`<div class="checklist-group"><div class="checklist-group-title">${group.group}</div>`;
+    group.items.forEach(item=>{
+      const status=coState.checklist[item.id];
+      checkHtml+=`<div class="check-item">
+        <div style="flex:1">
+          <div class="check-text" style="${status==='done'?'text-decoration:line-through;color:var(--mu)':''}">${item.text}</div>
+          ${item.note?`<div class="check-note">${item.note}</div>`:''}
+        </div>
+        <div class="check-actions">
+          <div class="cact" onclick="setCheck('${item.id}','done')" style="border-color:${status==='done'?'var(--gn)':'var(--bd)'};background:${status==='done'?'rgba(39,196,132,.1)':'var(--s2)'}">✓</div>
+          <div class="cact" onclick="setCheck('${item.id}','fail')" style="border-color:${status==='fail'?'var(--rd)':'var(--bd)'};background:${status==='fail'?'rgba(227,73,72,.1)':'var(--s2)'}">✗</div>
+        </div>
+      </div>`;
+    });
+    checkHtml+='</div>';
+  });
+  return `<div class="progress-wrap"><div class="progress-bar" style="width:75%"></div></div>
+  <div class="card">
+    <div class="card-title">Closing checklist</div>
+    <div class="card-sub">${done}/${total} complete</div>
+    ${checkHtml}
+  </div>
+  <button class="submit-btn" onclick="coStep=4;renderCloseout(document.getElementById('main'))">Next: Notes →</button>
+  <button class="back-btn" onclick="coStep=2;renderCloseout(document.getElementById('main'))">← Back</button>`;
+}
+
+function setCheck(id,status){
+  coState.checklist[id]=coState.checklist[id]===status?null:status;
+  renderCloseout(document.getElementById('main'));
+}
+
+function renderCoNotes(){
+  return `<div class="progress-wrap"><div class="progress-bar" style="width:90%"></div></div>
+  <div class="card">
+    <div class="card-title">Any notes?</div>
+    <div class="card-sub">Equipment issues, low items not listed, anything worth flagging. Optional.</div>
+    <textarea class="notes-inp" placeholder="e.g. Fryer oil needs changing, ran out of pickles at 8pm..."
+      oninput="coState.notes=this.value">${coState.notes}</textarea>
+  </div>
+  <button class="submit-btn" onclick="submitCloseout()" id="final-submit">✓ Submit Close-Out</button>
+  <button class="back-btn" onclick="coStep=3;renderCloseout(document.getElementById('main'))">← Back</button>`;
+}
+
+async function submitCloseout(){
+  const btn=document.getElementById('final-submit');
+  btn.disabled=true;btn.textContent='Saving...';
+  const lowItems=Object.entries(coState.lowStock).filter(([,v])=>v==='low').map(([k])=>k);
+  const items911=Object.entries(coState.lowStock).filter(([,v])=>v==='911').map(([k])=>k);
+  const payload={
+    ...coState,
+    allLowStock:[...lowItems,...coState.customLowStock],
+    items911,
+    lowItems,
+    submittedBy:currentStaff?.name||'Unknown',
+    submittedAt:new Date().toISOString(),
+    inventory:coState.inventory,
+  };
+  try{
+    const r=await fetch('/.netlify/functions/staff-submit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    if(!r.ok)throw new Error();
+  }catch{
+    lsSet('motorburger_last_closeout',payload);
+  }
+  coStep=5;renderCloseout(document.getElementById('main'));
+}
+
+function renderCoSuccess(main){
+  main.innerHTML=`<div class="main"><div class="success">
+    <div class="success-icon">✅</div>
+    <div class="success-title">Close-out submitted!</div>
+    <div class="success-sub">Inventory counts and prep notes will appear on the morning prep list. Great work tonight!</div>
+    ${Object.values(coState.lowStock).filter(v=>v==='911').length>0?
+      `<div style="background:rgba(227,73,72,.1);border:1px solid rgba(227,73,72,.3);border-radius:10px;padding:12px;margin-bottom:16px;color:var(--rd);font-size:13px">
+        <b>🔴 911 items flagged:</b><br>${Object.entries(coState.lowStock).filter(([,v])=>v==='911').map(([k])=>k).join(', ')}
+      </div>`:''}
+    <button class="submit-btn" onclick="appState='staff_home';render()">Back to Home</button>
+    <button class="back-btn" style="margin-top:10px" onclick="logout()">Log Out</button>
+  </div></div>`;
+}
+
+// ── MANAGER ──
+function mgrTab(tab){
+  mgrView=tab;
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
+  document.getElementById('mtab-'+tab).classList.add('on');
+  render();
+}
+
+function renderManager(main){
+  if(mgrView==='ts') renderMgrTimesheets(main);
+  else if(mgrView==='pay') renderMgrPayPeriod(main);
+  else if(mgrView==='team') renderMgrTeam(main);
+}
+
+function renderMgrTimesheets(main){
+  const shifts=getShifts().slice().reverse();
+  const todayStr=new Date().toLocaleDateString('en-CA',{timeZone:'America/Detroit'});
+
+  const activeShifts=shifts.filter(s=>!s.clockOut);
+  const todayShifts=shifts.filter(s=>s.date===todayStr&&s.clockOut);
+  const pastShifts=shifts.filter(s=>s.date!==todayStr&&s.clockOut).slice(0,30);
+
+  function shiftRow(s,editable=false){
+    const hrs=s.clockOut?hoursWorked(s.clockIn,s.clockOut):'active';
+    const badgeClass=s.roleId==='line'?'badge-line':s.roleId==='host'?'badge-host':'badge-prep';
+    return `<div class="ts-row">
+      <div style="flex:1">
+        <div style="font-weight:600;display:flex;align-items:center;gap:6px">
+          ${s.staffName.split(' ')[0]}
+          <span class="ts-role-badge ${badgeClass}">${s.roleName}</span>
+          ${s.geoSkipped?'<span style="font-size:10px;color:var(--a2)">⚠geo</span>':''}
+        </div>
+        <div class="ts-date">${fmtDate(s.clockIn)} · ${fmtTime(s.clockIn)}${s.clockOut?' – '+fmtTime(s.clockOut):' · In progress'}</div>
+      </div>
+      <div style="text-align:right">
+        <div class="ts-hours">${s.clockOut?hrs+' hrs':'🟢 Active'}</div>
+        ${editable&&s.clockOut?`<button class="edit-btn" onclick="editShift('${s.id}')">Edit</button>`:''}
+      </div>
+    </div>`;
+  }
+
+  main.innerHTML=`<div class="main">
+    <div class="sec">Currently clocked in</div>
+    <div class="card">
+      ${activeShifts.length?activeShifts.map(s=>shiftRow(s,false)).join(''):'<div style="color:var(--mu);font-size:13px">Nobody clocked in right now</div>'}
+    </div>
+    <div class="sec">Today — ${new Date().toLocaleDateString('en-US',{weekday:'long',month:'short',day:'numeric'})}</div>
+    <div class="card">
+      ${todayShifts.length?todayShifts.map(s=>shiftRow(s,true)).join(''):'<div style="color:var(--mu);font-size:13px">No completed shifts today</div>'}
+    </div>
+    <div class="sec">Recent shifts</div>
+    <div class="card">
+      ${pastShifts.length?pastShifts.map(s=>shiftRow(s,true)).join(''):'<div style="color:var(--mu);font-size:13px">No past shifts</div>'}
+    </div>
+    <button class="back-btn" onclick="logout()">Log Out</button>
+  </div>`;
+}
+
+function editShift(id){
+  const shifts=getShifts();
+  const shift=shifts.find(s=>s.id===id);
+  if(!shift)return;
+  const newRole=prompt(`Change role for ${shift.staffName}?\nCurrent: ${shift.roleName}\n\nType: line, host, or prep`);
+  if(!newRole)return;
+  const staff=STAFF.find(s=>s.id===shift.staffId);
+  const role=staff?.roles.find(r=>r.id===newRole.toLowerCase().trim());
+  if(!role){alert('Role not found. Use: line, host, or prep');return;}
+  updateShift(id,{roleId:role.id,roleName:role.name,rate:role.rate,tips:role.tips});
+  render();
+}
+
+function renderMgrPayPeriod(main){
+  // Default to last 14 days
+  const end=new Date();
+  const start=new Date();start.setDate(start.getDate()-13);
+  const startStr=lsGet('mb_pp_start')||start.toLocaleDateString('en-CA');
+  const endStr=lsGet('mb_pp_end')||end.toLocaleDateString('en-CA');
+
+  main.innerHTML=`<div class="main">
+    <div class="sec">Select pay period</div>
+    <div class="card">
+      <div class="pp-controls">
+        <input class="pp-input" type="date" id="pp-start" value="${startStr}" onchange="lsSet('mb_pp_start',this.value)">
+        <span style="padding:8px;color:var(--mu)">to</span>
+        <input class="pp-input" type="date" id="pp-end" value="${endStr}" onchange="lsSet('mb_pp_end',this.value)">
+        <button class="pp-btn" onclick="calcPayPeriod()">Calculate</button>
+      </div>
+    </div>
+    <div id="pp-results"></div>
+    <button class="back-btn" onclick="logout()">Log Out</button>
+  </div>`;
+
+  calcPayPeriod();
+}
+
+function calcPayPeriod(){
+  const startStr=document.getElementById('pp-start')?.value;
+  const endStr=document.getElementById('pp-end')?.value;
+  if(!startStr||!endStr)return;
+
+  const shifts=getShifts().filter(s=>{
+    if(!s.clockOut)return false;
+    return s.date>=startStr&&s.date<=endStr;
+  });
+
+  // Group by staff
+  const byStaff={};
+  STAFF.forEach(s=>{byStaff[s.id]={name:s.name,initials:s.initials,hours:0,tipHours:0,wages:0,shifts:[]};});
+
+  shifts.forEach(s=>{
+    if(!byStaff[s.staffId])return;
+    const hrs=parseFloat(hoursWorked(s.clockIn,s.clockOut));
+    byStaff[s.staffId].hours+=hrs;
+    if(s.tips)byStaff[s.staffId].tipHours+=hrs;
+    byStaff[s.staffId].wages+=hrs*s.rate;
+    byStaff[s.staffId].shifts.push(s);
+  });
+
+  // Get tips from Square (stored from last fetch) or prompt
+  const totalTips=parseFloat(lsGet('mb_period_tips')||0);
+  const totalTipHours=Object.values(byStaff).reduce((a,s)=>a+s.tipHours,0);
+  const tipRate=totalTipHours>0?totalTips/totalTipHours:0;
+
+  const results=document.getElementById('pp-results');
+  if(!results)return;
+
+  const activeStaff=Object.values(byStaff).filter(s=>s.hours>0);
+
+  if(!activeStaff.length){results.innerHTML=`<div style="color:var(--mu);font-size:13px;padding:16px 0">No shifts in this period</div>`;return;}
+
+  const totalWages=activeStaff.reduce((a,s)=>a+s.wages,0);
+
+  results.innerHTML=`
+    <div class="sec">Pay period summary</div>
+    <div class="pp-summary">
+      <div class="pp-summary-row"><span style="color:var(--mu)">Period</span><span>${startStr} → ${endStr}</span></div>
+      <div class="pp-summary-row"><span style="color:var(--mu)">Total wages</span><span style="font-weight:700">$${totalWages.toFixed(2)}</span></div>
+      <div class="pp-summary-row"><span style="color:var(--mu)">Total tip pool</span>
+        <span><input type="number" value="${totalTips}" onchange="lsSet('mb_period_tips',this.value);calcPayPeriod()" style="background:var(--s2);border:1px solid var(--bd);border-radius:6px;padding:4px 8px;color:var(--tx);font-size:14px;width:90px;text-align:right"> </span>
+      </div>
+      <div class="pp-summary-row"><span style="color:var(--mu)">Tip rate/hr</span><span>$${tipRate.toFixed(2)}/hr</span></div>
+    </div>
+    <div class="sec">By staff member</div>
+    ${activeStaff.map(s=>{
+      const tipsEarned=s.tipHours*tipRate;
+      const total=s.wages+tipsEarned;
+      return `<div class="pp-staff-row">
+        <div class="pp-staff-name">${s.name}</div>
+        <div class="pp-detail"><span class="pp-detail-label">Hours worked</span><span class="pp-detail-val">${s.hours.toFixed(2)} hrs</span></div>
+        <div class="pp-detail"><span class="pp-detail-label">Tip-eligible hrs</span><span class="pp-detail-val">${s.tipHours.toFixed(2)} hrs</span></div>
+        <div class="pp-detail"><span class="pp-detail-label">Wages</span><span class="pp-detail-val">$${s.wages.toFixed(2)}</span></div>
+        <div class="pp-detail"><span class="pp-detail-label">Tips earned</span><span class="pp-detail-val">$${tipsEarned.toFixed(2)}</span></div>
+        <div class="pp-detail"><span class="pp-detail-label">Total pay</span><span class="pp-detail-val pp-total">$${total.toFixed(2)}</span></div>
+      </div>`;
+    }).join('')}
+  `;
+}
+
+function renderMgrTeam(main){
+  const extraStaff=lsGet('mb_extra_staff')||[];
+  const offboarded=lsGet('mb_offboarded')||[];
+  const allStaff=[...STAFF,...extraStaff].filter(s=>!offboarded.find(o=>o.id===s.id));
+  const teamView=lsGet('mb_team_view')||'roster';
+
+  let body='';
+  if(teamView==='add'){
+    body=`<div class="sec">New employee</div>
+    <div class="card">
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <input id="new-name" class="ls-inp" type="text" placeholder="Full name *" style="width:100%">
+        <input id="new-phone" class="ls-inp" type="tel" placeholder="Phone number" style="width:100%">
+        <input id="new-email" class="ls-inp" type="email" placeholder="Email address" style="width:100%">
+        <input id="new-start" class="ls-inp" type="date" style="width:100%">
+        <div style="font-size:12px;color:var(--mu);margin-top:4px;font-weight:600">Primary Role *</div>
+        <select id="new-role1" class="sel"><option value="">Select role...</option><option value="line">Line Cook</option><option value="host">Host</option><option value="prep">Prep Shift</option></select>
+        <input id="new-rate1" class="ls-inp" type="number" placeholder="Hourly rate *" style="width:100%">
+        <select id="new-tips1" class="sel"><option value="true">✓ Tip eligible</option><option value="false">✗ No tips (Prep)</option></select>
+        <div style="font-size:12px;color:var(--mu);margin-top:4px;font-weight:600">Second Role (optional)</div>
+        <select id="new-role2" class="sel"><option value="">None</option><option value="line">Line Cook</option><option value="host">Host</option><option value="prep">Prep Shift</option></select>
+        <input id="new-rate2" class="ls-inp" type="number" placeholder="Rate for 2nd role" style="width:100%">
+        <select id="new-tips2" class="sel"><option value="true">✓ Tip eligible</option><option value="false">✗ No tips</option></select>
+        <button class="submit-btn" onclick="addEmployee()">Add Employee</button>
+        <button class="back-btn" onclick="lsSet('mb_team_view','roster');renderMgrTeam(document.getElementById('main'))">← Back</button>
+      </div>
+    </div>`;
+  } else if(teamView==='offboard'){
+    const sid=lsGet('mb_offboard_id');
+    const staff=allStaff.find(s=>s.id===sid);
+    body=`<div class="sec">Offboard ${staff?.name||'Employee'}</div>
+    <div class="card">
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="font-size:14px;color:var(--mu)">Last day</div>
+        <input id="ob-date" class="ls-inp" type="date" value="${new Date().toLocaleDateString('en-CA')}" style="width:100%">
+        <div style="font-size:14px;color:var(--mu)">Reason for leaving</div>
+        <select id="ob-reason" class="sel">
+          <option value="Voluntary resignation">Voluntary resignation</option>
+          <option value="Terminated">Terminated</option>
+          <option value="Laid off">Laid off</option>
+          <option value="Contract ended">Contract ended</option>
+          <option value="Other">Other</option>
+        </select>
+        <input id="ob-notes" class="ls-inp" type="text" placeholder="Notes (optional)" style="width:100%">
+        <button class="submit-btn" style="background:var(--rd)" onclick="confirmOffboard('${sid}')">Confirm Offboard</button>
+        <button class="back-btn" onclick="lsSet('mb_team_view','roster');renderMgrTeam(document.getElementById('main'))">← Cancel</button>
+      </div>
+    </div>`;
+  } else {
+    // Roster view
+    body=`<div class="sec">Active staff (${allStaff.length})</div>
+    ${allStaff.map(s=>{
+      const pin=getStaffPin(s)||null;
+      const isExtra=extraStaff.find(e=>e.id===s.id);
+      return `<div class="staff-card">
+        <div class="staff-card-hdr">
+          <div class="staff-avatar">${s.initials}</div>
+          <div style="flex:1">
+            <div class="staff-card-name">${s.name}</div>
+            <div class="staff-card-pin">PIN: ${pin?pin:'<span style="color:var(--rd)">Not set — set below</span>'}</div>
+            ${s.startDate?`<div style="font-size:11px;color:var(--mu)">Started: ${s.startDate}</div>`:''}
+          </div>
+          <div style="display:flex;gap:6px">
+            <button class="edit-btn" onclick="setPin('${s.id}')">PIN</button>
+            ${isExtra?`<button class="edit-btn" style="color:var(--rd);border-color:var(--rd)" onclick="startOffboard('${s.id}')">✕</button>`:'<button class="edit-btn" style="color:var(--rd);border-color:var(--rd)" onclick="startOffboard(''+s.id+'')">✕</button>'}
+          </div>
+        </div>
+        ${s.phone?`<div style="font-size:12px;color:var(--mu);margin-bottom:4px">📱 ${s.phone}</div>`:''}
+        ${s.email?`<div style="font-size:12px;color:var(--mu);margin-bottom:8px">✉️ ${s.email}</div>`:''}
+        ${s.roles.map(r=>`
+          <div class="role-row">
+            <span>${r.name}</span>
+            <span style="font-size:13px">$${r.rate}/hr · ${r.tips?'<span style="color:var(--gn)">Tips ✓</span>':'<span style="color:var(--rd)">No tips</span>'}</span>
+          </div>
+        `).join('')}
+      </div>`;
+    }).join('')}
+    ${offboarded.length?`<div class="sec" style="color:var(--mu)">Offboarded (${offboarded.length})</div>
+    ${offboarded.map(o=>`<div style="padding:10px;background:var(--s2);border-radius:var(--rs);margin-bottom:6px;font-size:13px;color:var(--mu)">
+      ${o.name} · ${o.reason} · ${o.date}
+    </div>`).join('')}`:''}
+    <button class="submit-btn" style="margin-top:8px" onclick="lsSet('mb_team_view','add');renderMgrTeam(document.getElementById('main'))">+ Add Employee</button>`;
+  }
+
+  main.innerHTML=`<div class="main">${body}<button class="back-btn" style="margin-top:10px" onclick="logout()">Log Out</button></div>`;
+}
+
+function startOffboard(staffId){
+  lsSet('mb_offboard_id',staffId);
+  lsSet('mb_team_view','offboard');
+  renderMgrTeam(document.getElementById('main'));
+}
+
+function confirmOffboard(staffId){
+  const date=document.getElementById('ob-date').value;
+  const reason=document.getElementById('ob-reason').value;
+  const notes=document.getElementById('ob-notes').value;
+  const extraStaff=lsGet('mb_extra_staff')||[];
+  const allStaff=[...STAFF,...extraStaff];
+  const staff=allStaff.find(s=>s.id===staffId);
+  if(!staff)return;
+  const offboarded=lsGet('mb_offboarded')||[];
+  offboarded.push({id:staffId,name:staff.name,date,reason,notes,offboardedAt:new Date().toISOString()});
+  lsSet('mb_offboarded',offboarded);
+  lsSet('mb_team_view','roster');
+  alert(`${staff.name} has been offboarded.`);
+  renderMgrTeam(document.getElementById('main'));
+}
+
+function addEmployee(){
+  const name=document.getElementById('new-name').value.trim();
+  const phone=document.getElementById('new-phone').value.trim();
+  const email=document.getElementById('new-email').value.trim();
+  const startDate=document.getElementById('new-start').value;
+  const role1=document.getElementById('new-role1').value;
+  const rate1=parseFloat(document.getElementById('new-rate1').value);
+  const tips1=document.getElementById('new-tips1').value==='true';
+  const role2=document.getElementById('new-role2').value;
+  const rate2=parseFloat(document.getElementById('new-rate2').value)||0;
+  const tips2=document.getElementById('new-tips2').value==='true';
+
+  if(!name||!role1||!rate1){alert('Please fill in name, primary role and rate');return;}
+
+  const roleNames={line:'Line Cook',host:'Host',prep:'Prep Shift'};
+  const roles=[{id:role1,name:roleNames[role1],rate:rate1,tips:tips1}];
+  if(role2&&rate2){roles.push({id:role2,name:roleNames[role2],rate:rate2,tips:tips2});}
+
+  const id=name.toLowerCase().replace(/[^a-z]/g,'_')+Date.now();
+  const initials=name.split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
+
+  const extra=lsGet('mb_extra_staff')||[];
+  extra.push({id,name,initials,phone,email,startDate,pin:null,roles});
+  lsSet('mb_extra_staff',extra);
+  lsSet('mb_team_view','roster');
+  alert(`${name} added! Set their PIN in the roster.`);
+  renderMgrTeam(document.getElementById('main'));
+}
+
+function setPin(staffId){
+  const extraStaff=lsGet('mb_extra_staff')||[];
+  const allStaff=[...STAFF,...extraStaff];
+  const staff=allStaff.find(s=>s.id===staffId);
+  if(!staff)return;
+  const pin=prompt(`Set 6-digit PIN for ${staff.name}:\n(Format: 00 or 01 + birth month + birth year\ne.g. 00 + 03 + 85 = 000385)`);
+  if(!pin||pin.length!==6||!/^\d{6}$/.test(pin)){
+    if(pin)alert('PIN must be exactly 6 digits');
+    return;
+  }
+  // Check for conflicts
+  const conflict=allStaff.find(s=>s.id!==staffId&&getStaffPin(s)===pin);
+  if(conflict||pin===OWNER_PIN){alert('That PIN is already in use. Choose a different one.');return;}
+  setStaffPin(staffId,pin);
+  render();
+}
+
+// Init
+render();
+</script>
+</body>
+</html>
