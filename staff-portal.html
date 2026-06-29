@@ -3,7 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>Motorburger — Staff Portal</title>
+<title>Motor Staff</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Motor Staff">
 <style>
   :root{
     --bg:#0f0f0f;--s1:#1a1a1a;--s2:#222;--bd:#2e2e2e;
@@ -116,7 +119,7 @@
 
 <div class="hdr">
   <div class="logo">
-    <div class="lm">M</div>
+    <div class="lm" style="font-size:13px;letter-spacing:-1px">MS</div>
     <div>
       <div class="ln">Staff Portal</div>
       <div class="ls">Motorburger · DSC</div>
@@ -301,7 +304,7 @@ function renderLowStock(main) {
     <div class="progress-wrap"><div class="progress-bar" style="width:50%"></div></div>
     <div class="card">
       <div class="card-title">What's running low?</div>
-      <div class="card-sub">Tap anything that needs ordering or prepping before next service. This goes straight to the owner's prep list.</div>
+      <div class="card-sub">Tap anything that needs ordering or prepping before next service. This goes straight to the prep list.</div>
       <div class="lowstock-section">
         <div class="lowstock-label">Common items — tap to flag</div>
         <div class="lowstock-grid" id="ls-grid">
@@ -450,7 +453,7 @@ function renderSuccess(main) {
     <div class="success">
       <div class="success-icon">✅</div>
       <div class="success-title">Close-out submitted!</div>
-      <div class="success-sub">Owner will see inventory counts and prep list in the morning dashboard. Have a great night!</div>
+      <div class="success-sub">Inventory counts and prep notes will appear on the morning prep list. Have a great night!</div>
       <div class="success-meta">
         <div class="success-row"><span class="success-row-label">🍗 Firebird Patties</span><span class="success-row-val">${state.inventory.chicken||'0'}</span></div>
         <div class="success-row"><span class="success-row-label">🐑 Lamb Patties</span><span class="success-row-val">${state.inventory.lamb||'0'}</span></div>
