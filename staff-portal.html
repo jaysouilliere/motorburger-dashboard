@@ -211,7 +211,7 @@
 // ── CONFIG ──
 const DSC_LAT = 42.3554;
 const DSC_LNG = -83.0521;
-const GEO_RADIUS_M = 75;
+const GEO_RADIUS_M = 150;
 const OWNER_PIN = '202020';
 
 const STAFF = [
@@ -435,7 +435,7 @@ function confirmRole(){
 
 // ── GEO CHECK ──
 function checkGeoAndClockIn(){
-  appState='geo';render();
+  document.getElementById('main').innerHTML=`<div class="main"><div class="geo-checking">📍 Checking your location...</div></div>`;
   if(!navigator.geolocation){doClockIn();return;}
   navigator.geolocation.getCurrentPosition(
     pos=>{
@@ -454,9 +454,15 @@ function checkGeoAndClockIn(){
 function showGeoError(distM){
   const main=document.getElementById('main');
   main.innerHTML=`<div class="main">
-    <div class="geo-error"><b>You're not at DSC</b>You appear to be ${distM}m away. You must be at the restaurant to clock in.<br><br>If you believe this is an error, contact Jay.</div>
-    <button class="big-btn btn-secondary" onclick="appState='staff_home';render()">← Back</button>
+    <div class="geo-error"><b>Not at DSC</b>You are ${distM}m away. Must be on-site to clock in.</div>
+    <button class="big-btn btn-secondary" onclick="appState='staff_home';render()">Back</button>
+    <button class="big-btn btn-secondary" style="font-size:13px;margin-top:6px;opacity:0.6" onclick="managerOverrideGeo()">Manager override</button>
   </div>`;
+}
+function managerOverrideGeo(){
+  const pin=prompt('Manager PIN:');
+  if(pin===OWNER_PIN){doClockIn(true);}
+  else{alert('Incorrect PIN');}
 }
 
 function doClockIn(geoSkipped=false){
