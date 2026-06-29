@@ -44,7 +44,7 @@
   .card-sub{font-size:13px;color:var(--mu);margin-bottom:20px;line-height:1.5;}
 
   /* NUMBER PAD STYLE INPUT */
-  .protein-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:8px;}
+  .protein-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:8px;}
   .protein-item{background:var(--s2);border:2px solid var(--bd);border-radius:var(--r);padding:16px 12px;text-align:center;transition:border-color .2s;}
   .protein-item.has-value{border-color:var(--gn);}
   .protein-emoji{font-size:28px;margin-bottom:6px;}
@@ -161,7 +161,7 @@ document.getElementById('hdr-date').textContent = TODAY.toLocaleDateString('en-U
 // State
 let currentStep = 1;
 const state = {
-  inventory: { chicken: '', lamb: '', veggie: '' },
+  inventory: { chicken: '', lamb: '', veggie: '', beef_cases: '', bun_packs: '' },
   lowStock: [],
   customLowStock: [],
   checklist: {}, // itemId -> 'done' | 'fail' | null
@@ -262,9 +262,11 @@ function render() {
 // ── STEP 1: INVENTORY ──
 function renderInventory(main) {
   const proteins = [
-    { key: 'chicken', emoji: '🍗', name: 'Chicken', hint: 'Firebird pieces in fridge' },
-    { key: 'lamb', emoji: '🐑', name: 'Lamb', hint: 'Lamborghini patties in fridge' },
-    { key: 'veggie', emoji: '🥬', name: 'Veggie', hint: 'Veg Engine patties in fridge' },
+    { key: 'chicken', emoji: '🍗', name: 'Firebird Patties', hint: 'Chicken patties in fridge' },
+    { key: 'lamb', emoji: '🐑', name: 'Lamb Patties', hint: 'Lamborghini patties in fridge' },
+    { key: 'veggie', emoji: '🥬', name: 'Veg Patties', hint: 'Veg Engine patties in fridge' },
+    { key: 'beef_cases', emoji: '🐄', name: 'Beef Boxes', hint: 'Boxes in walk-in' },
+    { key: 'bun_packs', emoji: '🥖', name: 'Bun Bags', hint: 'Bags remaining' },
   ];
 
   main.innerHTML = `
@@ -286,7 +288,7 @@ function renderInventory(main) {
         `).join('')}
       </div>
       <div style="font-size:12px;color:var(--mu);margin-top:8px;padding-top:12px;border-top:1px solid var(--bd)">
-        🐄 Beef is always fresh — no count needed
+        🐄 Beef Boxes = full sealed cases in walk-in · 🥖 Bun Bags = unopened packs
       </div>
     </div>
     <button class="submit-btn" onclick="nextStep(1)">Next: Low Stock →</button>
@@ -450,9 +452,11 @@ function renderSuccess(main) {
       <div class="success-title">Close-out submitted!</div>
       <div class="success-sub">Owner will see inventory counts and prep list in the morning dashboard. Have a great night!</div>
       <div class="success-meta">
-        <div class="success-row"><span class="success-row-label">🍗 Chicken on hand</span><span class="success-row-val">${state.inventory.chicken||'0'}</span></div>
-        <div class="success-row"><span class="success-row-label">🐑 Lamb on hand</span><span class="success-row-val">${state.inventory.lamb||'0'}</span></div>
-        <div class="success-row"><span class="success-row-label">🥬 Veggie on hand</span><span class="success-row-val">${state.inventory.veggie||'0'}</span></div>
+        <div class="success-row"><span class="success-row-label">🍗 Firebird Patties</span><span class="success-row-val">${state.inventory.chicken||'0'}</span></div>
+        <div class="success-row"><span class="success-row-label">🐑 Lamb Patties</span><span class="success-row-val">${state.inventory.lamb||'0'}</span></div>
+        <div class="success-row"><span class="success-row-label">🥬 Veg Patties</span><span class="success-row-val">${state.inventory.veggie||'0'}</span></div>
+        <div class="success-row"><span class="success-row-label">🐄 Beef Boxes</span><span class="success-row-val">${state.inventory.beef_cases||'0'}</span></div>
+        <div class="success-row"><span class="success-row-label">🥖 Bun Bags</span><span class="success-row-val">${state.inventory.bun_packs||'0'}</span></div>
         <div class="success-row"><span class="success-row-label">📋 Checklist</span><span class="success-row-val">${done} done · ${fails} flagged</span></div>
         <div class="success-row"><span class="success-row-label">⚠️ Low stock flagged</span><span class="success-row-val">${allLS.length>0?allLS.join(', '):'None'}</span></div>
         ${state.notes?`<div class="success-row"><span class="success-row-label">📝 Notes</span><span class="success-row-val" style="font-size:12px;text-align:right;max-width:60%">${state.notes.substring(0,80)}${state.notes.length>80?'...':''}</span></div>`:''}
