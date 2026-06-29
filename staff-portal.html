@@ -152,7 +152,8 @@
   .lowstock-label{font-size:13px;font-weight:600;color:var(--tx);margin-bottom:10px;}
   .lowstock-grid{display:flex;flex-wrap:wrap;gap:8px;}
   .ls-tag{background:var(--s2);border:1px solid var(--bd);border-radius:20px;padding:8px 14px;font-size:13px;color:var(--mu);cursor:pointer;-webkit-tap-highlight-color:transparent;transition:all .15s;}
-  .ls-tag.selected{background:rgba(232,71,26,.15);border-color:var(--ac);color:var(--ac);}
+  .ls-tag.low{background:rgba(245,166,35,.15);border-color:var(--a2);color:var(--a2);}
+  .ls-tag.e911{background:rgba(227,73,72,.15);border-color:var(--rd);color:var(--rd);font-weight:700;}
   .ls-custom{display:flex;gap:8px;margin-top:8px;}
   .ls-inp{background:var(--s2);border:1px solid var(--bd);border-radius:var(--rs);padding:10px 14px;font-size:14px;color:var(--tx);flex:1;outline:none;}
   .ls-add{background:var(--s2);border:1px solid var(--bd);border-radius:var(--rs);padding:10px 16px;font-size:14px;color:var(--tx);cursor:pointer;}
@@ -241,14 +242,6 @@ const STAFF = [
     pin: null,
     roles:[
       {id:'line',name:'Line Cook',rate:15,tips:true},
-    ]
-  },
-  {
-    id:'alberto', name:'Alberto Delcid', initials:'AD',
-    pin: null,
-    roles:[
-      {id:'line',name:'Line Cook',rate:15,tips:true},
-      {id:'prep',name:'Prep Shift',rate:20,tips:false},
     ]
   },
 ];
@@ -385,7 +378,9 @@ function pinTap(val){
 
 function checkPin(){
   if(pinEntry===OWNER_PIN){pinEntry='';pinError=false;appState='manager';render();return;}
-  const staff=STAFF.find(s=>getStaffPin(s)===pinEntry);
+  const extraStaff=lsGet('mb_extra_staff')||[];
+  const allStaff=[...STAFF,...extraStaff];
+  const staff=allStaff.find(s=>getStaffPin(s)===pinEntry);
   if(staff){
     currentStaff=staff;pinEntry='';pinError=false;
     if(staff.roles.length>1){appState='role';}
@@ -551,7 +546,7 @@ function goBack(){
 
 function startCloseout(){
   coStep=1;
-  coState={inventory:{chicken:'',lamb:'',veggie:'',beef_cases:'',bun_packs:''},lowStock:[],customLowStock:[],checklist:{},notes:''};
+  coState={inventory:{chicken:'',lamb:'',veggie:'',beef_cases:'',bun_packs:''},lowStock:{},customLowStock:[],checklist:{},notes:''};
   appState='closeout';
   render();
 }
@@ -611,16 +606,19 @@ function renderCoLowStock(){
     <div class="lowstock-section">
       <div class="lowstock-label">${cat.label}</div>
       <div class="lowstock-grid">
-        ${cat.items.map(item=>`
-          <div class="ls-tag ${coState.lowStock.includes(item)?'selected':''}" onclick="toggleLS('${item}',this)">${item}</div>
-        `).join('')}
+        ${cat.items.map(item=>{
+          const st=coState.lowStock[item]||null;
+          const cls=st==='911'?'e911':st==='low'?'low':'';
+          const txt=st==='911'?item+' 🔴':item;
+          return `<div class="ls-tag ${cls}" onclick="toggleLS('${item}',this)" title="${st==='low'?'Low stock':st==='911'?'CRITICAL — 911':'Tap: Low, Tap again: 911'}">${txt}</div>`;
+        }).join('')}
       </div>
     </div>
   `).join('');
   return `<div class="progress-wrap"><div class="progress-bar" style="width:50%"></div></div>
   <div class="card">
     <div class="card-title">What's low or needs prep?</div>
-    <div class="card-sub">Tap anything that needs ordering or prepping before next service.</div>
+    <div class="card-sub">Tap once = 🟡 Low (order soon) · Tap twice = 🔴 911 (critical, can't open without it) · Tap again to clear</div>
     ${catHtml}
     <div class="lowstock-section">
       <div class="lowstock-label">Anything else?</div>
@@ -643,9 +641,10 @@ function renderCoLowStock(){
 }
 
 function toggleLS(item,el){
-  const idx=coState.lowStock.indexOf(item);
-  if(idx===-1){coState.lowStock.push(item);el.classList.add('selected');}
-  else{coState.lowStock.splice(idx,1);el.classList.remove('selected');}
+  const current=coState.lowStock[item]||null;
+  if(!current){coState.lowStock[item]='low';el.className='ls-tag low';el.title='Low stock';}
+  else if(current==='low'){coState.lowStock[item]='911';el.className='ls-tag e911';el.textContent=item+' 🔴';}
+  else{delete coState.lowStock[item];el.className='ls-tag';el.textContent=item;}
 }
 function addCustomLS(){
   const inp=document.getElementById('ls-inp');
@@ -706,9 +705,13 @@ function renderCoNotes(){
 async function submitCloseout(){
   const btn=document.getElementById('final-submit');
   btn.disabled=true;btn.textContent='Saving...';
+  const lowItems=Object.entries(coState.lowStock).filter(([,v])=>v==='low').map(([k])=>k);
+  const items911=Object.entries(coState.lowStock).filter(([,v])=>v==='911').map(([k])=>k);
   const payload={
     ...coState,
-    allLowStock:[...coState.lowStock,...coState.customLowStock],
+    allLowStock:[...lowItems,...coState.customLowStock],
+    items911,
+    lowItems,
     submittedBy:currentStaff?.name||'Unknown',
     submittedAt:new Date().toISOString(),
     inventory:coState.inventory,
@@ -727,6 +730,10 @@ function renderCoSuccess(main){
     <div class="success-icon">✅</div>
     <div class="success-title">Close-out submitted!</div>
     <div class="success-sub">Inventory counts and prep notes will appear on the morning prep list. Great work tonight!</div>
+    ${Object.values(coState.lowStock).filter(v=>v==='911').length>0?
+      `<div style="background:rgba(227,73,72,.1);border:1px solid rgba(227,73,72,.3);border-radius:10px;padding:12px;margin-bottom:16px;color:var(--rd);font-size:13px">
+        <b>🔴 911 items flagged:</b><br>${Object.entries(coState.lowStock).filter(([,v])=>v==='911').map(([k])=>k).join(', ')}
+      </div>`:''}
     <button class="submit-btn" onclick="appState='staff_home';render()">Back to Home</button>
     <button class="back-btn" style="margin-top:10px" onclick="logout()">Log Out</button>
   </div></div>`;
@@ -891,9 +898,12 @@ function calcPayPeriod(){
 }
 
 function renderMgrTeam(main){
+  // Load any dynamically added staff
+  const extraStaff=lsGet('mb_extra_staff')||[];
+  const allStaff=[...STAFF,...extraStaff];
   main.innerHTML=`<div class="main">
     <div class="sec">Staff roster</div>
-    ${STAFF.map(s=>{
+    ${allStaff.map(s=>{
       const pin=getStaffPin(s)||'Not set';
       return `<div class="staff-card">
         <div class="staff-card-hdr">
@@ -912,12 +922,53 @@ function renderMgrTeam(main){
         `).join('')}
       </div>`;
     }).join('')}
+    <div class="sec">Add new staff member</div>
+    <div class="card">
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <input id="new-name" class="ls-inp" type="text" placeholder="Full name" style="width:100%">
+        <select id="new-role1" class="sel"><option value="">Primary role...</option><option value="line">Line Cook</option><option value="host">Host</option><option value="prep">Prep Shift</option></select>
+        <input id="new-rate1" class="ls-inp" type="number" placeholder="Hourly rate (e.g. 15)" style="width:100%">
+        <select id="new-tips1" class="sel"><option value="true">Tip eligible</option><option value="false">No tips (Prep)</option></select>
+        <div style="font-size:12px;color:var(--mu)">Second role (optional):</div>
+        <select id="new-role2" class="sel"><option value="">None</option><option value="line">Line Cook</option><option value="host">Host</option><option value="prep">Prep Shift</option></select>
+        <input id="new-rate2" class="ls-inp" type="number" placeholder="Rate for 2nd role" style="width:100%">
+        <select id="new-tips2" class="sel"><option value="true">Tip eligible</option><option value="false">No tips (Prep)</option></select>
+        <button class="submit-btn" style="margin-top:4px" onclick="addEmployee()">+ Add Employee</button>
+      </div>
+    </div>
     <button class="back-btn" onclick="logout()">Log Out</button>
   </div>`;
 }
 
+function addEmployee(){
+  const name=document.getElementById('new-name').value.trim();
+  const role1=document.getElementById('new-role1').value;
+  const rate1=parseFloat(document.getElementById('new-rate1').value);
+  const tips1=document.getElementById('new-tips1').value==='true';
+  const role2=document.getElementById('new-role2').value;
+  const rate2=parseFloat(document.getElementById('new-rate2').value)||0;
+  const tips2=document.getElementById('new-tips2').value==='true';
+
+  if(!name||!role1||!rate1){alert('Please fill in name, primary role and rate');return;}
+
+  const roleNames={line:'Line Cook',host:'Host',prep:'Prep Shift'};
+  const roles=[{id:role1,name:roleNames[role1],rate:rate1,tips:tips1}];
+  if(role2&&rate2){roles.push({id:role2,name:roleNames[role2],rate:rate2,tips:tips2});}
+
+  const id=name.toLowerCase().replace(/\s+/g,'_')+Date.now();
+  const initials=name.split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
+
+  const extra=lsGet('mb_extra_staff')||[];
+  extra.push({id,name,initials,pin:null,roles});
+  lsSet('mb_extra_staff',extra);
+  alert(`${name} added! Now set their PIN in the roster above.`);
+  render();
+}
+
 function setPin(staffId){
-  const staff=STAFF.find(s=>s.id===staffId);
+  const extraStaff=lsGet('mb_extra_staff')||[];
+  const allStaff=[...STAFF,...extraStaff];
+  const staff=allStaff.find(s=>s.id===staffId);
   if(!staff)return;
   const pin=prompt(`Set 6-digit PIN for ${staff.name}:\n(Format: 00 or 01 + birth month + birth year\ne.g. 00 + 03 + 85 = 000385)`);
   if(!pin||pin.length!==6||!/^\d{6}$/.test(pin)){
@@ -925,7 +976,7 @@ function setPin(staffId){
     return;
   }
   // Check for conflicts
-  const conflict=STAFF.find(s=>s.id!==staffId&&getStaffPin(s)===pin);
+  const conflict=allStaff.find(s=>s.id!==staffId&&getStaffPin(s)===pin);
   if(conflict||pin===OWNER_PIN){alert('That PIN is already in use. Choose a different one.');return;}
   setStaffPin(staffId,pin);
   render();
