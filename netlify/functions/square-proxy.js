@@ -1,3 +1,5 @@
+const { getStore } = require('@netlify/blobs');
+
 exports.handler = async function (event) {
   const TOKEN = process.env.SQUARE_TOKEN;
   const LOCATION_ID = process.env.SQUARE_LOCATION_ID;
@@ -47,43 +49,25 @@ exports.handler = async function (event) {
     return r.json();
   }
 
-  async function getInventoryCounts() {
+  async function getStaffInventory() {
     try {
-      let allItems = [], cursor = null;
-      do {
-        const body = { object_types: ['ITEM'], limit: 100 };
-        if (cursor) body.cursor = cursor;
-        const result = await squarePost('/catalog/search', body);
-        if (result.objects) allItems = allItems.concat(result.objects);
-        cursor = result.cursor;
-      } while (cursor);
-
-      const TRACKED = { chicken: ['firebird'], lamb: ['lamborghini'], veggie: ['veg engine'] };
-      const variationIds = [], idToType = {};
-      allItems.forEach(item => {
-        const itemName = (item.item_data?.name || '').toLowerCase();
-        for (const [type, keywords] of Object.entries(TRACKED)) {
-          if (keywords.some(k => itemName.includes(k))) {
-            (item.item_data?.variations || []).forEach(v => {
-              variationIds.push(v.id); idToType[v.id] = type;
-            });
-          }
-        }
-      });
-      if (variationIds.length === 0) return {};
-      const invResult = await squarePost('/inventory/counts/batch-retrieve', {
-        catalog_object_ids: variationIds, location_ids: [LOCATION_ID], states: ['IN_STOCK'],
-      });
-      const counts = {};
-      (invResult.counts || []).forEach(c => {
-        const type = idToType[c.catalog_object_id];
-        if (type && c.state === 'IN_STOCK') counts[type] = (counts[type]||0) + parseFloat(c.quantity||0);
-      });
-      return counts;
-    } catch (e) { return { _error: e.message }; }
+      const store = getStore("motorburger-closeouts");
+      const latest = await store.get("latest", { type: "json" });
+      if (!latest?.inventory) return null;
+      const savedAt = new Date(latest.savedAt);
+      const hoursAgo = (Date.now() - savedAt) / 3600000;
+      if (hoursAgo > 20) return null;
+      return {
+        counts: latest.inventory,
+        submittedAt: latest.savedAt,
+        lowStock: latest.allLowStock || [],
+        notes: latest.notes || '',
+        fromStaff: true,
+        hoursAgo: Math.round(hoursAgo),
+      };
+    } catch(e) { return null; }
   }
 
-  // Ticketmaster events
   async function getTicketmasterEvents() {
     if (!TM_KEY) return [];
     try {
@@ -112,7 +96,6 @@ exports.handler = async function (event) {
     } catch(e) { return []; }
   }
 
-  // Masonic Temple scraper — scrapes themasonic.com/events
   async function getMasonicEvents() {
     try {
       const r = await fetch('https://themasonic.com/events/', {
@@ -121,8 +104,6 @@ exports.handler = async function (event) {
       const html = await r.text();
       const events = [];
       const seen = new Set();
-
-      // Parse JSON-LD structured data (most reliable)
       const jsonLdMatches = html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g) || [];
       jsonLdMatches.forEach(block => {
         try {
@@ -131,8 +112,7 @@ exports.handler = async function (event) {
           items.forEach(item => {
             if (item['@type']==='Event' && item.name && !seen.has(item.name)) {
               seen.add(item.name);
-              const startDate = item.startDate || '';
-              const d = startDate ? new Date(startDate) : null;
+              const d = item.startDate ? new Date(item.startDate) : null;
               events.push({
                 name: item.name,
                 date: d ? toEasternDate(d.toISOString()) : '',
@@ -146,47 +126,15 @@ exports.handler = async function (event) {
           });
         } catch {}
       });
-
-      // Fallback: regex parse if JSON-LD not found
-      if (events.length === 0) {
-        const nameMatches = html.matchAll(/"name"\s*:\s*"([^"]{5,80})"/g);
-        const dateMatches = html.matchAll(/"startDate"\s*:\s*"([^"]+)"/g);
-        const names = [...nameMatches].map(m=>m[1]);
-        const dates = [...dateMatches].map(m=>m[1]);
-        const limit = Math.min(names.length, dates.length, 10);
-        for (let i=0; i<limit; i++) {
-          if (seen.has(names[i])) continue;
-          seen.add(names[i]);
-          const d = new Date(dates[i]);
-          events.push({
-            name: names[i],
-            date: toEasternDate(d.toISOString()),
-            time: d.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',timeZone:'America/Detroit'}),
-            venue: 'Masonic Temple Theatre',
-            url: 'https://themasonic.com/events/',
-            category: 'Concert / Live Event',
-            source: 'masonic',
-          });
-        }
-      }
-
       return events;
     } catch(e) { return []; }
   }
 
   async function getEvents() {
-    const [tmEvents, masonicEvents] = await Promise.all([
-      getTicketmasterEvents(),
-      getMasonicEvents(),
-    ]);
-
-    // Merge — deduplicate by name
+    const [tmEvents, masonicEvents] = await Promise.all([getTicketmasterEvents(), getMasonicEvents()]);
     const seen = new Set(tmEvents.map(e=>e.name.toLowerCase()));
     const merged = [...tmEvents];
-    masonicEvents.forEach(e => {
-      if (!seen.has(e.name.toLowerCase())) merged.push(e);
-    });
-
+    masonicEvents.forEach(e => { if (!seen.has(e.name.toLowerCase())) merged.push(e); });
     merged.sort((a,b) => (a.date||'').localeCompare(b.date||''));
     return { events: merged, masonicScraped: masonicEvents.length > 0, masonicCount: masonicEvents.length };
   }
@@ -289,24 +237,11 @@ exports.handler = async function (event) {
     const end = new Date();
     let startStr, endStr;
     endStr = end.toISOString().split('T')[0]+'T23:59:59.999Z';
+
     if (isYtd) {
       startStr = new Date(end.getFullYear(),0,1).toISOString().split('T')[0]+'T00:00:00.000Z';
     } else if (isPrep) {
       const s=new Date(); s.setDate(s.getDate()-91);
       startStr = s.toISOString().split('T')[0]+'T00:00:00.000Z';
     } else {
-      const s=new Date(); s.setDate(s.getDate()-days-1);
-      startStr = s.toISOString().split('T')[0]+'T00:00:00.000Z';
-    }
-
-    const promises = [getAllOrders(startStr, endStr)];
-    if (isPrep) promises.push(getInventoryCounts());
-    const results = await Promise.all(promises);
-    const summary = processOrders(results[0]);
-    const inventory = isPrep ? (results[1]||{}) : {};
-
-    return { statusCode:200, headers, body:JSON.stringify({summary, inventory}) };
-  } catch(err) {
-    return { statusCode:500, headers, body:JSON.stringify({error:err.message}) };
-  }
-};
+      const s=new Date();
