@@ -174,14 +174,12 @@ const state = {
 };
 
 // LOW STOCK ITEMS — common items staff might flag
-const LOW_STOCK_ITEMS = [
-  'Chipotle sauce','Garlic aioli','House sauce','Sriracha',
-  'Brioche buns','Burger boxes','Fry containers','Napkins',
-  'Caramelized onions','Pineapple','Jalapeños','Lettuce',
-  'Tomatoes','Pickles','Red onion','Cheese slices',
-  'Bacon','Mushrooms (FUNGuY)','Poutine gravy','Cheese curds',
-  'Fry oil','Gloves','Paper towels','Cleaning spray',
+const LOW_STOCK_CATEGORIES = [
+  { label: '🧴 Sauces', items: ['Fire Sauce','BG Aioli','Veg Sauce','Motor Sauce'] },
+  { label: '🍳 Line Items', items: ['Bacon','Mushrooms','Bacon Jam','Carms','Fire Peppers','Nachos','Cheese Slice','Line Onion Slice','Pico'] },
+  { label: '🔪 Preliminary Prep', items: ['Carm Prep','BJ Prep','Grill Sliders','Slider Veg'] },
 ];
+const LOW_STOCK_ITEMS = LOW_STOCK_CATEGORIES.flatMap(c => c.items);
 
 // CLOSING CHECKLIST — day aware
 const CHECKLIST = {
@@ -300,19 +298,23 @@ function renderInventory(main) {
 
 // ── STEP 2: LOW STOCK ──
 function renderLowStock(main) {
+  const categoryHtml = LOW_STOCK_CATEGORIES.map(cat => `
+    <div class="lowstock-section">
+      <div class="lowstock-label">${cat.label}</div>
+      <div class="lowstock-grid">
+        ${cat.items.map(item => `
+          <div class="ls-tag ${state.lowStock.includes(item)?'selected':''}" onclick="toggleLowStock('${item}',this)">${item}</div>
+        `).join('')}
+      </div>
+    </div>
+  `).join('');
+
   main.innerHTML = `
     <div class="progress-wrap"><div class="progress-bar" style="width:50%"></div></div>
     <div class="card">
-      <div class="card-title">What's running low?</div>
-      <div class="card-sub">Tap anything that needs ordering or prepping before next service. This goes straight to the prep list.</div>
-      <div class="lowstock-section">
-        <div class="lowstock-label">Common items — tap to flag</div>
-        <div class="lowstock-grid" id="ls-grid">
-          ${LOW_STOCK_ITEMS.map(item => `
-            <div class="ls-tag ${state.lowStock.includes(item)?'selected':''}" onclick="toggleLowStock('${item}',this)">${item}</div>
-          `).join('')}
-        </div>
-      </div>
+      <div class="card-title">What's low or needs prep?</div>
+      <div class="card-sub">Tap anything that needs ordering or prepping before next service. Goes straight to the prep list.</div>
+      ${categoryHtml}
       <div class="lowstock-section">
         <div class="lowstock-label">Anything else?</div>
         <div class="ls-custom">
