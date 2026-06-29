@@ -211,6 +211,7 @@ function applyReveal(){
     btn.classList.remove('shown');
     btn.title='Show sensitive numbers';
   }
+  if(statsD?.byDate) setTimeout(()=>renderChart(statsD.byDate),50);
 }
 
 // Wrap sensitive values
@@ -557,7 +558,7 @@ function renderChart(byDate){
   const cols=recent.map(d=>{const day=days[new Date(d.date+'T12:00:00').getDay()];return day==='Saturday'?'#27c484':day==='Sunday'?'#4a8fe8':day==='Friday'?'#f5a623':'#e8471a';});
   const ctx=document.getElementById('rChart');if(!ctx)return;
   if(rChart)rChart.destroy();
-  rChart=new Chart(ctx,{type:'bar',data:{labels:recent.map(d=>d.date.slice(5)),datasets:[{data:recent.map(d=>d.gross),backgroundColor:cols,borderRadius:5,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{title:i=>`${days[new Date(recent[i[0].dataIndex].date+'T12:00:00').getDay()]}, ${recent[i[0].dataIndex].date}`,label:i=>'$'+i.raw.toLocaleString()},backgroundColor:'#1a1a1a',titleColor:'#f0ede8',bodyColor:'#888680',borderColor:'#2e2e2e',borderWidth:1}},scales:{x:{ticks:{color:'#888680',font:{size:10},maxRotation:45},grid:{display:false},border:{display:false}},y:{ticks:{color:'#888680',font:{size:11},callback:v=>'$'+(v>=1000?(v/1000).toFixed(0)+'k':v)},grid:{color:'#2e2e2e'},border:{display:false}}}}});
+  rChart=new Chart(ctx,{type:'bar',data:{labels:recent.map(d=>d.date.slice(5)),datasets:[{data:recent.map(d=>d.gross),backgroundColor:cols,borderRadius:5,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{enabled:revealed,callbacks:{title:i=>`${days[new Date(recent[i[0].dataIndex].date+'T12:00:00').getDay()]}, ${recent[i[0].dataIndex].date}`,label:i=>'$'+i.raw.toLocaleString()},backgroundColor:'#1a1a1a',titleColor:'#f0ede8',bodyColor:'#888680',borderColor:'#2e2e2e',borderWidth:1}},scales:{x:{ticks:{color:'#888680',font:{size:10},maxRotation:45},grid:{display:false},border:{display:false}},y:{ticks:{color:'#888680',font:{size:11},callback:v=>revealed?'$'+(v>=1000?(v/1000).toFixed(0)+'k':v):'●●●'},grid:{color:'#2e2e2e'},border:{display:false}}}}});
 }
 
 function renderStats(summary){
