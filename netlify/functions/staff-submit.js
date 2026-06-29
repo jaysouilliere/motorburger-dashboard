@@ -1,5 +1,3 @@
-const { getStore } = require('@netlify/blobs');
-
 exports.handler = async function(event) {
   const headers = {
     "Access-Control-Allow-Origin": "*",
@@ -11,6 +9,7 @@ exports.handler = async function(event) {
   if (event.httpMethod !== "POST") return { statusCode: 405, headers, body: JSON.stringify({ error: "Method not allowed" }) };
 
   try {
+    const { getStore } = require('@netlify/blobs');
     const payload = JSON.parse(event.body);
     const store = getStore("motorburger-closeouts");
 
