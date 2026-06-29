@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Motor Staff</title>
+<link rel="apple-touch-icon" href="/icon-staff.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Motor Staff">
@@ -26,6 +27,10 @@
   .ls{font-size:12px;color:var(--mu);margin-top:2px;}
   .date-badge{background:var(--s2);border:1px solid var(--bd);border-radius:var(--rs);padding:6px 12px;font-size:12px;color:var(--mu);text-align:right;}
   .date-day{font-size:15px;font-weight:600;color:var(--tx);}
+
+  /* PREP SHORTCUT BAR */
+  .prepbar{padding:14px 20px 0;}
+  .prepbtn{width:100%;background:var(--s1);border:1px solid var(--bl);color:var(--bl);border-radius:var(--r);padding:13px;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;-webkit-tap-highlight-color:transparent;}
 
   /* FLOW STEPS */
   .steps{display:flex;padding:16px 20px;gap:0;background:var(--s1);border-bottom:1px solid var(--bd);}
@@ -113,6 +118,13 @@
 
   /* STATUS */
   .saving{text-align:center;padding:20px;color:var(--mu);font-size:14px;}
+
+  /* TODAY'S PREP VIEW */
+  .prep-row{display:flex;align-items:center;gap:14px;padding:14px 0;border-bottom:1px solid var(--bd);}
+  .prep-row:last-child{border-bottom:none;}
+  .prep-emoji{font-size:24px;width:32px;text-align:center;flex-shrink:0;}
+  .prep-qty{font-size:22px;font-weight:700;min-width:40px;text-align:right;}
+  .trendtag{display:inline-block;font-size:10px;padding:2px 8px;border-radius:10px;margin-left:6px;background:rgba(227,73,72,.15);color:var(--rd);}
 </style>
 </head>
 <body>
@@ -129,6 +141,10 @@
     <div class="date-day" id="hdr-day"></div>
     <div id="hdr-date"></div>
   </div>
+</div>
+
+<div class="prepbar" id="prepbar">
+  <button class="prepbtn" onclick="showPrepView()">📋 View Today's Prep List</button>
 </div>
 
 <div class="steps" id="steps-bar">
@@ -156,6 +172,7 @@
 const TODAY = new Date();
 const DAY_NAMES = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 const DAY = DAY_NAMES[TODAY.getDay()];
+const BUF = 1.20, TREND = 1.10;
 
 // Set header
 document.getElementById('hdr-day').textContent = DAY;
@@ -163,6 +180,7 @@ document.getElementById('hdr-date').textContent = TODAY.toLocaleDateString('en-U
 
 // State
 let currentStep = 1;
+let inPrepView = false;
 const state = {
   inventory: { chicken: '', lamb: '', veggie: '', beef_cases: '', bun_packs: '' },
   lowStock: [],
@@ -258,6 +276,100 @@ function render() {
   else if (currentStep === 3) renderChecklist(main);
   else if (currentStep === 4) renderNotes(main);
   else if (currentStep === 5) renderSuccess(main);
+}
+
+// ── TODAY'S PREP (read-only view for staff) ──
+function showPrepView() {
+  inPrepView = true;
+  document.getElementById('steps-bar').style.display = 'none';
+  document.getElementById('prepbar').style.display = 'none';
+  loadPrepView();
+}
+
+function exitPrepView() {
+  inPrepView = false;
+  document.getElementById('steps-bar').style.display = 'flex';
+  document.getElementById('prepbar').style.display = 'block';
+  render();
+}
+
+async function loadPrepView() {
+  const main = document.getElementById('main');
+  main.innerHTML = `<div class="card"><div class="card-title">Loading today's prep…</div></div>`;
+  try {
+    const r = await fetch('/.netlify/functions/square-proxy?prep=true');
+    const p = await r.json();
+    if (p.error) throw new Error(p.error);
+    renderPrepView(p);
+  } catch (e) {
+    main.innerHTML = `
+      <div class="card">
+        <div class="card-title">Couldn't load prep data</div>
+        <div class="card-sub">${e.message}</div>
+      </div>
+      <button class="back-btn" onclick="exitPrepView()">← Back to close-out</button>`;
+  }
+}
+
+function renderPrepView(p) {
+  const main = document.getElementById('main');
+  const dayData = p.summary?.dowAvgs?.[DAY];
+  const inv = p.inventory || {};
+
+  if (!dayData || dayData.days < 1) {
+    main.innerHTML = `
+      <div class="card">
+        <div class="card-title">No history yet for ${DAY}</div>
+        <div class="card-sub">Not enough past data to build a prep target yet.</div>
+      </div>
+      <button class="back-btn" onclick="exitPrepView()">← Back to close-out</button>`;
+    return;
+  }
+
+  const isTrending = dayData.trend > TREND;
+  const trendMult = isTrending ? 1.10 : 1.0;
+  const totalTarget = Math.ceil(dayData.avgProteins * BUF * trendMult);
+  const bt = dayData.avgByType, totalAvg = dayData.avgProteins || 1;
+  const targets = {
+    beef: Math.ceil(bt.beef / totalAvg * totalTarget),
+    chicken: Math.ceil(bt.chicken / totalAvg * totalTarget),
+    lamb: Math.ceil(bt.lamb / totalAvg * totalTarget),
+    veggie: Math.ceil(bt.veggie / totalAvg * totalTarget),
+  };
+  const onHand = {
+    chicken: Math.round(inv.chicken || 0),
+    lamb: Math.round(inv.lamb || 0),
+    veggie: Math.round(inv.veggie || 0),
+  };
+  const totalBuns = targets.beef + targets.chicken + targets.lamb + targets.veggie;
+  const drinks = Math.ceil((dayData.avgDrinks || 0) * BUF * trendMult);
+
+  const rows = [
+    { e:'🐄', n:'Beef patties', v:targets.beef, d:'Fresh daily — full target' },
+    { e:'🍗', n:'Chicken (Firebird)', v:targets.chicken, d: onHand.chicken ? `${onHand.chicken} on hand → build to ${targets.chicken}` : `Build to ${targets.chicken}` },
+    { e:'🐑', n:'Lamb (Lamborghini)', v:targets.lamb, d: onHand.lamb ? `${onHand.lamb} on hand → build to ${targets.lamb}` : `Build to ${targets.lamb}` },
+    { e:'🥬', n:'Veggie (Veg Engine)', v:targets.veggie, d: onHand.veggie ? `${onHand.veggie} on hand → build to ${targets.veggie}` : `Build to ${targets.veggie}` },
+    { e:'🥖', n:'Buns total', v:totalBuns, d:'1 per protein' },
+    { e:'🧃', n:'Drinks to stock', v:drinks, d:'Avg attach rate' },
+  ];
+
+  main.innerHTML = `
+    <div class="card">
+      <div class="card-title">Today's Prep — ${DAY}${isTrending?'<span class="trendtag">↑ trending up</span>':''}</div>
+      <div class="card-sub">Based on the last ${dayData.days} ${DAY}s · avg ${Math.round(dayData.avgProteins)} proteins. Same numbers Jay sees on the owner dashboard.</div>
+      ${rows.map(row => `
+        <div class="prep-row">
+          <div class="prep-emoji">${row.e}</div>
+          <div style="flex:1">
+            <div class="check-text">${row.n}</div>
+            <div class="check-note">${row.d}</div>
+          </div>
+          <div class="prep-qty">${row.v}</div>
+        </div>
+      `).join('')}
+    </div>
+    <button class="back-btn" onclick="exitPrepView()">← Back to close-out</button>
+  `;
 }
 
 // ── STEP 1: INVENTORY ──
