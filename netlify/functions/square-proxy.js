@@ -1,5 +1,3 @@
-const { getStore } = require('@netlify/blobs');
-
 exports.handler = async function (event) {
   const TOKEN = process.env.SQUARE_TOKEN;
   const LOCATION_ID = process.env.SQUARE_LOCATION_ID;
@@ -49,11 +47,14 @@ exports.handler = async function (event) {
     return r.json();
   }
 
+  // Read staff closeout inventory from Blob storage
   async function getStaffInventory() {
     try {
+      const { getStore } = require('@netlify/blobs');
       const store = getStore("motorburger-closeouts");
       const latest = await store.get("latest", { type: "json" });
       if (!latest?.inventory) return null;
+      // Only use if submitted within last 20 hours
       const savedAt = new Date(latest.savedAt);
       const hoursAgo = (Date.now() - savedAt) / 3600000;
       if (hoursAgo > 20) return null;
@@ -68,6 +69,7 @@ exports.handler = async function (event) {
     } catch(e) { return null; }
   }
 
+  // Ticketmaster events
   async function getTicketmasterEvents() {
     if (!TM_KEY) return [];
     try {
@@ -96,6 +98,7 @@ exports.handler = async function (event) {
     } catch(e) { return []; }
   }
 
+  // Masonic scraper
   async function getMasonicEvents() {
     try {
       const r = await fetch('https://themasonic.com/events/', {
@@ -244,4 +247,30 @@ exports.handler = async function (event) {
       const s=new Date(); s.setDate(s.getDate()-91);
       startStr = s.toISOString().split('T')[0]+'T00:00:00.000Z';
     } else {
-      const s=new Date();
+      const s=new Date(); s.setDate(s.getDate()-days-1);
+      startStr = s.toISOString().split('T')[0]+'T00:00:00.000Z';
+    }
+
+    const promises = [getAllOrders(startStr, endStr)];
+    if (isPrep) promises.push(getStaffInventory());
+
+    const results = await Promise.all(promises);
+    const summary = processOrders(results[0]);
+    
+    // For prep: use staff blob inventory if available, otherwise empty
+    let inventory = {};
+    let staffCloseout = null;
+    if (isPrep && results[1]) {
+      staffCloseout = results[1];
+      inventory = staffCloseout.counts || {};
+    }
+
+    return { 
+      statusCode:200, 
+      headers, 
+      body:JSON.stringify({summary, inventory, staffCloseout}) 
+    };
+  } catch(err) {
+    return { statusCode:500, headers, body:JSON.stringify({error:err.message}) };
+  }
+};
