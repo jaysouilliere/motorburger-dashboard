@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Motorburger</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  :root{--bg:#0f0f0f;--s1:#1a1a1a;--s2:#222;--bd:#2e2e2e;--tx:#f0ede8;--mu:#888680;--ac:#e8471a;--a2:#f5a623;--gn:#27c484;--rd:#e34948;--bl:#4a8fe8;--fn:-apple-system,'SF Pro Display','Helvetica Neue',sans-serif;--r:12px;--rs:8px;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--tx);font-family:var(--fn);min-height:100vh;-webkit-font-smoothing:antialiased;}
+  .hdr{background:var(--s1);border-bottom:1px solid var(--bd);padding:14px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
+  .logo{display:flex;align-items:center;gap:10px;}
+  .lm{width:32px;height:32px;background:var(--ac);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#fff;}
+  .ln{font-size:15px;font-weight:600;}.ls{font-size:11px;color:var(--mu);}
+  .hdrbtns{display:flex;gap:8px;align-items:center;}
+  .rbtn{background:var(--ac);color:#fff;border:none;border-radius:var(--rs);padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;}
+  .rbtn:disabled{opacity:0.5;}
+  .eyebtn{background:var(--s2);border:1px solid var(--bd);color:var(--mu);border-radius:var(--rs);padding:8px 12px;font-size:13px;cursor:pointer;}
+  .eyebtn.shown{color:var(--ac);border-color:var(--ac);}
+  .tabs{background:var(--s1);border-bottom:1px solid var(--bd);padding:0 16px;display:flex;overflow-x:auto;scrollbar-width:none;}
+  .tabs::-webkit-scrollbar{display:none;}
+  .tab{padding:12px 13px;font-size:13px;font-weight:500;color:var(--mu);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;flex-shrink:0;-webkit-tap-highlight-color:transparent;}
+  .tab.on{color:var(--ac);border-bottom-color:var(--ac);}
+  .dbar{background:var(--s1);border-bottom:1px solid var(--bd);padding:10px 16px;display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;}
+  .dbar::-webkit-scrollbar{display:none;}
+  .chip{background:var(--s2);border:1px solid var(--bd);border-radius:20px;padding:6px 14px;font-size:12px;font-weight:500;color:var(--mu);cursor:pointer;white-space:nowrap;flex-shrink:0;}
+  .chip.on{background:var(--ac);border-color:var(--ac);color:#fff;}
+  .main{padding:14px 14px 60px;max-width:680px;margin:0 auto;}
+  .stat{background:var(--s2);border:1px solid var(--bd);border-radius:var(--rs);padding:10px 14px;font-size:12px;color:var(--mu);margin-bottom:14px;display:flex;align-items:center;gap:6px;}
+  .sdot{width:6px;height:6px;border-radius:50%;background:var(--mu);flex-shrink:0;}
+  .sdot.live{background:var(--gn);animation:pulse 2s infinite;}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+
+  /* SENSITIVE NUMBER HIDING */
+  .sens{display:inline-block;transition:filter .2s;}
+  .hidden .sens{filter:blur(6px);user-select:none;-webkit-user-select:none;cursor:pointer;}
+  .hidden .sens:after{content:'';} 
+  .reveal-hint{font-size:10px;color:var(--mu);text-align:center;padding:4px 0;display:none;}
+  .hidden .reveal-hint{display:block;}
+
+  .kg{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
+  .kc{background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);padding:14px;}
+  .kc.full{grid-column:1/-1;}.kc.hi{border-color:var(--ac);}
+  .kl{font-size:11px;color:var(--mu);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;}
+  .kv{font-size:28px;font-weight:700;letter-spacing:-1px;line-height:1;}
+  .kv.g{color:var(--gn);}.kv.r{color:var(--rd);}.kv.a{color:var(--a2);}
+  .ks{font-size:11px;color:var(--mu);margin-top:5px;line-height:1.4;}
+  .ab{background:var(--s2);border-radius:4px;height:8px;margin:8px 0 5px;overflow:hidden;}
+  .af{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--ac),var(--a2));}
+  .al{display:flex;justify-content:space-between;font-size:11px;color:var(--mu);}
+  .pg{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px;}
+  .pc{background:var(--s1);border:1px solid var(--bd);border-radius:var(--rs);padding:12px 10px;text-align:center;}
+  .pi{font-size:20px;margin-bottom:4px;}.pv{font-size:20px;font-weight:700;line-height:1;}
+  .pl{font-size:10px;color:var(--mu);margin-top:3px;text-transform:uppercase;letter-spacing:.05em;}
+  .pp{font-size:10px;color:var(--mu);margin-top:2px;}
+  .sec{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--mu);margin:18px 0 10px;padding-bottom:8px;border-bottom:1px solid var(--bd);}
+  .fl{border-radius:var(--rs);padding:12px 14px;margin-bottom:8px;font-size:13px;line-height:1.5;display:flex;gap:10px;}
+  .fl.w{background:rgba(245,166,35,.1);border:1px solid rgba(245,166,35,.25);}
+  .fl.d{background:rgba(227,73,72,.1);border:1px solid rgba(227,73,72,.25);}
+  .fl.ok{background:rgba(39,196,132,.1);border:1px solid rgba(39,196,132,.25);}
+  .fi{font-size:16px;flex-shrink:0;}.fb b{font-weight:600;display:block;margin-bottom:2px;}
+  .cc{background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);padding:14px;margin-bottom:10px;}
+  .ct{font-size:12px;color:var(--mu);margin-bottom:10px;}
+  .ir{display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid var(--bd);}
+  .ir:last-child{border-bottom:none;}
+  .in{font-size:13px;flex:1;}
+  .it{font-size:10px;padding:2px 6px;border-radius:4px;flex-shrink:0;}
+  .tb{background:rgba(232,71,26,.15);color:var(--ac);}
+  .tch{background:rgba(245,166,35,.15);color:var(--a2);}
+  .tla{background:rgba(74,143,232,.15);color:var(--bl);}
+  .tv{background:rgba(39,196,132,.15);color:var(--gn);}
+  .ibw{width:60px;}.ibt{background:var(--s2);border-radius:3px;height:5px;}
+  .ibf{height:5px;border-radius:3px;}
+  .bb{background:var(--ac);}.bc{background:var(--a2);}.bla{background:var(--bl);}.bv{background:var(--gn);}
+  .iq{font-size:13px;font-weight:600;width:36px;text-align:right;}
+  .iv{font-size:11px;color:var(--mu);width:52px;text-align:right;}
+  .dt{width:100%;border-collapse:collapse;font-size:13px;}
+  .dt th{text-align:left;color:var(--mu);font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.05em;padding:0 0 8px;border-bottom:1px solid var(--bd);}
+  .dt th:not(:first-child){text-align:right;}
+  .dt td{padding:9px 0;border-bottom:1px solid var(--bd);}
+  .dt td:not(:first-child){text-align:right;}
+  .dt tr:last-child td{border-bottom:none;}
+  .pos{color:var(--gn);font-size:11px;}.neg{color:var(--rd);font-size:11px;}
+  .err{background:rgba(227,73,72,.1);border:1px solid rgba(227,73,72,.3);border-radius:var(--r);padding:20px;text-align:center;color:var(--rd);font-size:14px;line-height:1.7;}
+  .err b{display:block;font-size:16px;margin-bottom:8px;}
+  .dprow{display:flex;align-items:center;gap:8px;margin-bottom:14px;}
+  .dplbl{font-size:12px;color:var(--mu);white-space:nowrap;}
+  .dpsel{background:var(--s2);border:1px solid var(--bd);border-radius:var(--rs);padding:6px 10px;font-size:13px;color:var(--tx);flex:1;appearance:none;-webkit-appearance:none;}
+  .pup{background:var(--s1);border:2px solid var(--ac);border-radius:var(--r);padding:16px;margin-bottom:14px;}
+  .put{font-size:13px;font-weight:600;color:var(--ac);margin-bottom:12px;}
+  .pur{display:flex;align-items:center;padding:9px 0;border-bottom:1px solid var(--bd);gap:10px;}
+  .pur:last-child{border-bottom:none;}
+  .pue{font-size:18px;width:24px;text-align:center;flex-shrink:0;}
+  .pun{font-size:14px;flex:1;}.pud{font-size:11px;color:var(--mu);}
+  .puq{font-size:18px;font-weight:700;min-width:36px;text-align:right;}
+  .puq.z{color:var(--gn);}.puq.lo{color:var(--a2);}.puq.hi{color:var(--ac);}
+  .ph{background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);padding:16px;margin-bottom:14px;}
+  .phd{font-size:22px;font-weight:700;letter-spacing:-.5px;}
+  .phs{font-size:12px;color:var(--mu);margin-top:3px;}
+  .phm{font-size:11px;color:var(--mu);margin-top:10px;padding-top:10px;border-top:1px solid var(--bd);line-height:1.6;}
+  .tp{display:inline-block;font-size:10px;padding:2px 8px;border-radius:10px;margin-left:4px;}
+  .tpu{background:rgba(227,73,72,.15);color:var(--rd);}.tpn{background:rgba(39,196,132,.15);color:var(--gn);}
+  .pt{width:100%;border-collapse:collapse;}
+  .pt th{text-align:left;font-size:11px;color:var(--mu);text-transform:uppercase;letter-spacing:.05em;padding:0 0 8px;border-bottom:1px solid var(--bd);}
+  .pt th:not(:first-child){text-align:right;}
+  .pt td{padding:11px 0;border-bottom:1px solid var(--bd);font-size:14px;}
+  .pt td:not(:first-child){text-align:right;}
+  .pt tr:last-child td{border-bottom:none;}
+  .ib{font-size:11px;padding:2px 7px;border-radius:8px;margin-left:4px;}
+  .ibok{background:rgba(39,196,132,.15);color:var(--gn);}
+  .iblo{background:rgba(245,166,35,.15);color:var(--a2);}
+  .ibno{background:rgba(136,134,128,.15);color:var(--mu);}
+  .nb{font-weight:700;color:var(--tx);}.nz{font-weight:700;color:var(--gn);}
+  .sc{background:var(--s2);border:1px solid var(--bd);border-radius:var(--rs);padding:12px 14px;margin-bottom:14px;font-size:13px;line-height:1.6;}
+  .yh{background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);padding:16px;margin-bottom:14px;}
+  .yd{font-size:13px;color:var(--mu);margin-bottom:4px;}
+  .yr{font-size:36px;font-weight:700;letter-spacing:-1.5px;line-height:1;}
+  .yb{font-size:12px;margin-top:6px;}
+  .ao{background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);padding:14px;margin-bottom:10px;}
+  .aoi{display:flex;gap:8px;margin-bottom:8px;}
+  .aoinp{background:var(--s2);border:1px solid var(--bd);border-radius:var(--rs);padding:8px 12px;font-size:13px;color:var(--tx);flex:1;outline:none;}
+  .aoadd{background:var(--ac);color:#fff;border:none;border-radius:var(--rs);padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;}
+  .aolist{list-style:none;}
+  .aoitem{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--bd);font-size:13px;}
+  .aoitem:last-child{border-bottom:none;}
+  .aocheck{width:18px;height:18px;border-radius:4px;border:1px solid var(--bd);background:var(--s2);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:11px;}
+  .aocheck.done{background:var(--gn);border-color:var(--gn);color:#fff;}
+  .aotext{flex:1;}.aotext.done{text-decoration:line-through;color:var(--mu);}
+  .aodel{background:none;border:none;color:var(--mu);cursor:pointer;font-size:16px;padding:0 4px;}
+  .sharebtn{background:var(--s2);border:1px solid var(--bd);border-radius:var(--rs);padding:10px 16px;font-size:13px;color:var(--tx);cursor:pointer;width:100%;text-align:center;margin-top:8px;display:flex;align-items:center;justify-content:center;gap:6px;}
+  .evhero{background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);padding:16px;margin-bottom:14px;}
+  .evd{font-size:18px;font-weight:700;letter-spacing:-.5px;}.evs{font-size:11px;color:var(--mu);margin-top:3px;}
+  .evcard{background:var(--s1);border:1px solid var(--bd);border-radius:10px;padding:12px;margin-bottom:8px;display:flex;gap:10px;}
+  .evcard.hot{border-color:var(--ac);}.evcard.med{border-color:var(--a2);}
+  .evdot{width:8px;height:8px;border-radius:50%;background:var(--mu);flex-shrink:0;margin-top:4px;}
+  .evdot.r{background:var(--rd);}.evdot.a{background:var(--a2);}
+  .evname{font-size:13px;font-weight:600;margin-bottom:2px;}.evvenue{font-size:11px;color:var(--mu);}
+  .evtime{font-size:11px;color:var(--a2);margin-top:2px;}
+  .evimp{font-size:10px;background:rgba(232,71,26,.15);color:var(--ac);padding:2px 7px;border-radius:8px;display:inline-block;margin-top:4px;}
+  .evlink{background:var(--s1);border:1px solid var(--bd);border-radius:10px;padding:12px 14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;text-decoration:none;}
+  .evlinktext{font-size:13px;color:var(--bl);font-weight:500;}.evlinkicon{font-size:11px;color:var(--mu);}
+  .noev{font-size:12px;color:var(--mu);padding:8px 0;}
+  .evsec{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--mu);margin:12px 0 6px;padding-bottom:6px;border-bottom:1px solid var(--bd);}
+  .concflag{background:rgba(232,71,26,.1);border:1px solid rgba(232,71,26,.3);border-radius:10px;padding:12px 14px;margin-bottom:10px;display:flex;gap:10px;}
+  .msbadge{font-size:10px;background:rgba(74,143,232,.15);color:var(--bl);padding:2px 7px;border-radius:8px;display:inline-block;margin-left:6px;}
+  .tsbadge{font-size:10px;background:rgba(232,71,26,.12);color:var(--ac);padding:2px 7px;border-radius:8px;display:inline-block;margin-left:6px;}
+</style>
+</head>
+<body>
+<div class="hdr">
+  <div class="logo"><div class="lm">M</div><div><div class="ln">Motorburger</div><div class="ls">Detroit Shipping Company</div></div></div>
+  <div class="hdrbtns">
+    <button class="eyebtn" id="eyebtn" onclick="toggleReveal()" title="Show/hide sensitive numbers">👁</button>
+    <button class="rbtn" id="rbtn" onclick="refresh()">↻ Refresh</button>
+  </div>
+</div>
+<div class="tabs">
+  <div class="tab on" id="tab-prep" onclick="sw('prep')">📋 Prep</div>
+  <div class="tab" id="tab-yday" onclick="sw('yday')">📅 Yesterday</div>
+  <div class="tab" id="tab-stats" onclick="sw('stats')">📊 Stats</div>
+  <div class="tab" id="tab-events" onclick="sw('events')">🎵 Events</div>
+</div>
+<div id="dbar" style="display:none">
+  <div class="dbar">
+    <div class="chip on" onclick="sr(7,this)">7 days</div>
+    <div class="chip" onclick="sr(14,this)">14 days</div>
+    <div class="chip" onclick="sr(30,this)">30 days</div>
+    <div class="chip" onclick="sr(90,this)">90 days</div>
+    <div class="chip" onclick="sr(180,this)">6 months</div>
+    <div class="chip" onclick="sr(365,this)">Full year</div>
+  </div>
+</div>
+<div class="main" id="main-wrap">
+  <div class="stat" id="stat"><div class="sdot" id="sdot"></div><span id="stxt">Loading...</span></div>
+  <div class="reveal-hint">Tap 👁 to reveal numbers</div>
+  <div id="content"></div>
+</div>
+
+<script>
+const BM={Tuesday:368,Wednesday:404,Thursday:581,Friday:1238,Saturday:2568,Sunday:1796};
+const TARGET=352725,BUF=1.20,TREND=1.10;
+let cdays=7,rChart=null,ytdRev=0;
+let ctab='prep',prepD=null,prepInv=null,statsD=null,ydayD=null,eventsD=null;
+let prepDate=null;
+let revealed=true; // default shown — tap eye to hide
+
+function lsGet(k){try{return JSON.parse(localStorage.getItem(k)||'null');}catch{return null;}}
+function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch{}}
+
+// On load, check saved state
+window.addEventListener('load',()=>{
+  revealed = lsGet('mb_revealed')!==false;
+  applyReveal();
+});
+
+function toggleReveal(){
+  revealed=!revealed;
+  lsSet('mb_revealed',revealed);
+  applyReveal();
+}
+
+function applyReveal(){
+  const wrap=document.getElementById('main-wrap');
+  const btn=document.getElementById('eyebtn');
+  if(revealed){
+    wrap.classList.remove('hidden');
+    btn.classList.add('shown');
+    btn.title='Hide sensitive numbers';
+  } else {
+    wrap.classList.add('hidden');
+    btn.classList.remove('shown');
+    btn.title='Show sensitive numbers';
+  }
+  if(statsD?.byDate) setTimeout(()=>renderChart(statsD.byDate),50);
+}
+
+// Wrap sensitive values
+function S(val){return `<span class="sens">${val}</span>`;}
+
+function fmt(n){return S('$'+Math.round(n).toLocaleString());}
+function fmtD(n){return S('$'+Number(n).toFixed(2));}
+function fmtR(n){return S('$'+Math.round(n).toLocaleString());}  // revenue
+function ceil(n){return Math.ceil(n);}
+function dow(d){return['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][d.getDay()];}
+function addDays(d,n){const x=new Date(d);x.setDate(x.getDate()+n);return x;}
+function dateStr(d){return d.toLocaleDateString('en-CA',{timeZone:'America/Detroit'});}
+
+function sw(tab){
+  ctab=tab;
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
+  document.getElementById('tab-'+tab).classList.add('on');
+  document.getElementById('dbar').style.display=tab==='stats'?'block':'none';
+  if(tab==='prep'){if(prepD)renderPrep(prepD,prepInv);else loadPrep();}
+  else if(tab==='yday'){if(ydayD)renderYday(ydayD);else loadYday();}
+  else if(tab==='stats'){if(statsD)renderStats(statsD);else loadStats();}
+  else if(tab==='events'){if(eventsD)renderEvents(eventsD);else loadEvents();}
+}
+
+function sr(days,el){
+  cdays=days;
+  document.querySelectorAll('.chip').forEach(c=>c.classList.remove('on'));
+  el.classList.add('on');
+  statsD=null;loadStats();
+}
+
+function refresh(){
+  prepD=null;prepInv=null;statsD=null;ydayD=null;eventsD=null;ytdRev=0;
+  if(ctab==='prep')loadPrep();
+  else if(ctab==='yday')loadYday();
+  else if(ctab==='events')loadEvents();
+  else loadStats();
+}
+
+function setStatus(state,txt){
+  const s=document.getElementById('sdot'),t=document.getElementById('stxt'),b=document.getElementById('rbtn');
+  s.className=state==='live'?'sdot live':'sdot';
+  t.textContent=txt;b.disabled=state==='loading';b.textContent=state==='loading'?'Loading...':'↻ Refresh';
+}
+function showErr(msg){
+  setStatus('err','Error — tap Refresh');
+  document.getElementById('content').innerHTML=`<div class="err"><b>Couldn't load data</b>${msg}</div>`;
+}
+
+// ── EVENTS ──
+async function loadEvents(){
+  setStatus('loading','Loading events...');
+  try{
+    const r=await fetch('/.netlify/functions/square-proxy?events=true');
+    const p=await r.json();
+    if(p.error)throw new Error(p.error);
+    eventsD=p;
+    renderEvents(p);
+    setStatus('live',`Events · ${new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})}`);
+  }catch(e){showErr(e.message);}
+}
+
+function renderEvents(payload){
+  const events=payload.events||[];
+  const masonicScraped=payload.masonicScraped;
+  const today=dateStr(new Date());
+  const tomorrow=dateStr(addDays(new Date(),1));
+
+  const todayEv=events.filter(e=>e.date===today);
+  const tmrwEv=events.filter(e=>e.date===tomorrow);
+  const laterEv=events.filter(e=>e.date>tomorrow);
+
+  function isBig(e){const v=(e.venue||'').toLowerCase();return v.includes('masonic')||v.includes('little caesars')||v.includes('ford field')||v.includes('comerica');}
+
+  function renderEvSection(title,evs){
+    if(!evs.length)return`<div class="evsec">${title}</div><div class="noev">No events found</div>`;
+    let h=`<div class="evsec">${title}</div>`;
+    evs.forEach(e=>{
+      const big=isBig(e);
+      const ms=e.source==='masonic';
+      const ts=e.source==='tripleseat';
+      h+=`<div class="evcard ${big?'hot':'med'}">
+        <div class="evdot ${big?'r':'a'}"></div>
+        <div style="flex:1">
+          <div class="evname">${e.url?`<a href="${e.url}" style="color:var(--tx);text-decoration:none">${e.name}</a>`:e.name}${ms?'<span class="msbadge">Masonic</span>':''}${ts?'<span class="tsbadge">Private event</span>':''}</div>
+          <div class="evvenue">${e.venue}${ts&&e.guestCount?` · ${e.guestCount} guests`:''}${ts&&e.account?` · ${e.account}`:''}</div>
+          ${e.time!=='TBA'?`<div class="evtime">${e.time}${e.category?' · '+e.category:''}</div>`:''}
+          ${big?`<div class="evimp">${ms?'High impact — Masonic affects your traffic':'High impact — expect surge'}</div>`:''}
+        </div>
+      </div>`;
+    });
+    return h;
+  }
+
+  const tsCount=payload.tripleseatCount||0;
+  const tsErr=payload.errors?.tripleseat;
+  let h=`<div class="evhero">
+    <div class="evd">Nearby events this week</div>
+    <div class="evs">Ticketmaster · ${masonicScraped?'Masonic live data ✓':'Masonic direct links below'} · ${tsCount>0?`Tripleseat ✓ (${tsCount})`:tsErr?'Tripleseat: check connection':'Tripleseat: no bookings'}</div>
+  </div>`;
+
+  h+=renderEvSection('Today',todayEv);
+  h+=renderEvSection('Tomorrow',tmrwEv);
+  if(laterEv.length) h+=renderEvSection('Later this week',laterEv);
+
+  h+=`<div class="evsec">Masonic Temple — always verify</div>
+  <a class="evlink" href="https://themasonic.com/events/" target="_blank">
+    <span class="evlinktext">themasonic.com/events</span><span class="evlinkicon">↗</span>
+  </a>
+  <a class="evlink" href="https://www.axs.com/venues/101490/masonic-temple-theatre-detroit-tickets" target="_blank">
+    <span class="evlinktext">AXS Masonic listings</span><span class="evlinkicon">↗</span>
+  </a>`;
+
+  document.getElementById('content').innerHTML=h;
+}
+
+// ── PREP ──
+async function loadPrep(){
+  setStatus('loading','Pulling inventory & history...');
+  try{
+    const r=await fetch('/.netlify/functions/square-proxy?prep=true');
+    const p=await r.json();
+    if(p.error)throw new Error(p.error);
+    prepD=p.summary;prepInv=p.inventory||{};
+    if(!eventsD){try{const er=await fetch('/.netlify/functions/square-proxy?events=true');const ep=await er.json();eventsD=ep;}catch{}}
+    renderPrep(prepD,prepInv,p);
+    setStatus('live',`Live · ${new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})}`);
+  }catch(e){showErr(e.message);}
+}
+
+function getTargetDate(){return prepDate?new Date(prepDate+'T12:00:00'):addDays(new Date(),1);}
+
+function buildDatePicker(){
+  const today=new Date();
+  let opts='';
+  for(let i=-7;i<=14;i++){
+    const d=addDays(today,i);
+    const ds=dateStr(d);
+    const dayName=dow(d);
+    if(dayName==='Monday')continue;
+    const label=i===1?`Tomorrow (${dayName})`:(i===0?`Today (${dayName})`:`${dayName} ${d.toLocaleDateString('en-US',{month:'short',day:'numeric'})}`);
+    const sel=(prepDate===ds||(prepDate===null&&i===1))?'selected':'';
+    opts+=`<option value="${ds}" ${sel}>${label}</option>`;
+  }
+  return `<div class="dprow"><span class="dplbl">Prep for:</span><select class="dpsel" onchange="prepDate=this.value;renderPrep(prepD,prepInv,null)">${opts}</select></div>`;
+}
+
+function renderPrep(summary,inventory,payload){
+  const td=getTargetDate();
+  const tdName=dow(td);
+  const tdStr=dateStr(td);
+  const todayStr=dateStr(new Date());
+  const todayName=dow(new Date());
+  const dayData=summary.dowAvgs?.[tdName];
+
+  // Concert flag
+  let concertHtml='';
+  if(eventsD?.events){
+    const dayEvs=eventsD.events.filter(e=>e.date===tdStr);
+    const big=dayEvs.filter(e=>{const v=(e.venue||'').toLowerCase();return v.includes('masonic')||v.includes('little caesars')||v.includes('ford field');});
+    if(big.length){
+      concertHtml=`<div class="concflag"><div class="fi">🎵</div><div class="fb"><b>${big[0].name}</b>${big[0].venue} · ${big[0].time!=='TBA'?big[0].time+' · ':''} Expect higher traffic. Consider bumping beef +15%.</div></div>`;
+    } else if(dayEvs.length){
+      concertHtml=`<div class="fl w"><div class="fi">📍</div><div class="fb"><b>${dayEvs.length} event${dayEvs.length>1?'s':''} nearby</b>${dayEvs[0].name}</div></div>`;
+    }
+  }
+
+  if(!dayData||dayData.days<1){
+    document.getElementById('content').innerHTML=buildDatePicker()+concertHtml+`<div class="err"><b>No history for ${tdName}</b>Not enough data yet.</div>`;
+    return;
+  }
+
+  const trendMult=dayData.trend>TREND?1.10:1.0;
+  const totalTarget=ceil(dayData.avgProteins*BUF*trendMult);
+  const bt=dayData.avgByType,totalAvg=dayData.avgProteins||1;
+  const targets={beef:ceil(bt.beef/totalAvg*totalTarget),chicken:ceil(bt.chicken/totalAvg*totalTarget),lamb:ceil(bt.lamb/totalAvg*totalTarget),veggie:ceil(bt.veggie/totalAvg*totalTarget)};
+  const onHand={beef:0,chicken:Math.round(inventory.chicken||0),lamb:Math.round(inventory.lamb||0),veggie:Math.round(inventory.veggie||0)};
+  const toPickup={beef:targets.beef,chicken:Math.max(0,targets.chicken-onHand.chicken),lamb:Math.max(0,targets.lamb-onHand.lamb),veggie:Math.max(0,targets.veggie-onHand.veggie)};
+  const totalBuns=targets.beef+targets.chicken+targets.lamb+targets.veggie;
+  const drinks=ceil((dayData.avgDrinks||0)*BUF*trendMult);
+  const isTrending=dayData.trend>TREND;
+  const todaySales=(summary.byDate||[]).find(d=>d.date===todayStr);
+  const addons=lsGet('motorburger_addons')||[];
+
+  let h=buildDatePicker()+concertHtml;
+
+  if(todaySales){
+    const bench=BM[todayName]||0;
+    const vs=bench>0?((todaySales.gross/bench-1)*100).toFixed(0):0;
+    h+=`<div class="sc"><b>${todayName}:</b> ${fmt(todaySales.gross)} · ${todaySales.proteins} proteins <span style="color:${todaySales.gross>=(bench||0)?'var(--gn)':'var(--a2)'}">${Math.abs(vs)}% ${todaySales.gross>=(bench||1)?'above':'below'} benchmark</span></div>`;
+  }
+
+  h+=`<div class="ph"><div class="phd">Prepping for ${tdName}</div><div class="phs">${td.toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})}</div>
+  <div class="phm">Based on last ${dayData.days} ${tdName}s · avg ${Math.round(dayData.avgProteins)} proteins · ${fmt(dayData.avgRevenue)}
+    <span class="tp ${isTrending?'tpu':'tpn'}">${isTrending?'↑ Trending up':'✓ Normal pace'}</span>
+  </div></div>`;
+
+  h+=`<div class="pup"><div class="put">🛒 Build-to list for ${tdName}</div>`;
+  [{e:'🐄',n:'Beef patties',type:'beef',note:'Fresh daily — full target'},{e:'🍗',n:'Chicken (Firebird)',type:'chicken'},{e:'🐑',n:'Lamb (Lamborghini)',type:'lamb'},{e:'🥬',n:'Veggie (Veg Engine)',type:'veggie'},{e:'🥖',n:'Buns total',type:'buns'},{e:'🧃',n:'Drinks to stock',type:'drinks'}].forEach(row=>{
+    let qty,detail,cls;
+    if(row.type==='buns'){qty=totalBuns;detail='1 per protein';cls='hi';}
+    else if(row.type==='drinks'){qty=drinks;detail='avg attach rate';cls='lo';}
+    else if(row.type==='beef'){qty=targets.beef;detail='fresh daily — full target';cls='hi';}
+    else{const have=onHand[row.type];qty=toPickup[row.type];detail=have>0?`${have} on hand → build to ${targets[row.type]}`:`0 on hand → need ${targets[row.type]}`;cls=qty===0?'z':qty<=3?'lo':'hi';}
+    h+=`<div class="pur"><div class="pue">${row.e}</div><div><div class="pun">${row.n}</div><div class="pud">${detail||''}</div></div><div class="puq ${cls}">${qty===0?'✓':qty}</div></div>`;
+  });
+  h+=`</div>`;
+
+  h+=`<div class="sec">Full build-to breakdown</div><div class="cc"><table class="pt"><thead><tr><th>Protein</th><th>Target</th><th>On hand</th><th>Pick up</th></tr></thead><tbody>`;
+  [{e:'🐄',n:'Beef',t:'beef',tr:false},{e:'🍗',n:'Chicken',t:'chicken',tr:true},{e:'🐑',n:'Lamb',t:'lamb',tr:true},{e:'🥬',n:'Veggie',t:'veggie',tr:true}].forEach(p=>{
+    const tgt=targets[p.t];const have=p.tr?onHand[p.t]:null;const need=p.tr?toPickup[p.t]:tgt;
+    const haveStr=p.tr?(have>0?`${have}<span class="ib ${have>=tgt/2?'ibok':'iblo'}">${have>=tgt?'stocked':'partial'}</span>`:`0<span class="ib ibno">none</span>`):`<span class="ib ibno">fresh daily</span>`;
+    const needStr=(!p.tr||need>0)?`<span class="nb">${need}</span>`:`<span class="nz">✓ 0</span>`;
+    h+=`<tr><td>${p.e} ${p.n}</td><td>${tgt}</td><td>${haveStr}</td><td>${needStr}</td></tr>`;
+  });
+  h+=`<tr style="border-top:2px solid var(--bd)"><td style="font-weight:600">🥖 Buns</td><td style="font-weight:700">${totalBuns}</td><td><span class="ib ibno">check stock</span></td><td><span class="nb">${totalBuns}</span></td></tr>`;
+  h+=`</tbody></table><div style="font-size:11px;color:var(--mu);margin-top:10px;padding-top:10px;border-top:1px solid var(--bd)">Build-to targets · 20% buffer${isTrending?' + 10% trend':''} · Inventory from Square</div></div>`;
+
+  // Staff closeout data
+  const sc=payload?.staffCloseout;
+  if(sc){
+    const items911=sc.items911||[];
+    const lowItems=sc.lowItems||[];
+    const allCustom=sc.allLowStock||[];
+    const hoursAgo=sc.hoursAgo||0;
+    const submittedBy=sc.submittedBy||'Staff';
+
+    if(items911.length>0){
+      h+=`<div class="sec">🔴 911 — Order immediately</div>`;
+      items911.forEach(item=>{
+        h+=`<div class="fl d"><div class="fi">🔴</div><div class="fb"><b>${item}</b>Critical — not enough to open. Order today.</div></div>`;
+      });
+    }
+    if(lowItems.length>0){
+      h+=`<div class="sec">🟡 Low stock — Order soon</div>`;
+      lowItems.forEach(item=>{
+        h+=`<div class="fl w"><div class="fi">🟡</div><div class="fb"><b>${item}</b>Running low — order before next service.</div></div>`;
+      });
+    }
+    if(sc.notes){
+      h+=`<div class="sec">Staff notes</div><div class="sc" style="border-left:3px solid var(--a2)">${sc.notes}<div style="font-size:11px;color:var(--mu);margin-top:6px">— ${submittedBy}, ${hoursAgo}h ago</div></div>`;
+    }
+  }
+
+  // Prep add-on options grouped by category
+  const ADDON_OPTIONS=[
+    {group:'🧴 Sauces',items:['Fire Sauce','BG Aioli','Veg Sauce','Motor Sauce']},
+    {group:'🍳 Line Items',items:['Bacon','Mushrooms','Bacon Jam','Carms','Fire Peppers','Nachos','Cheese Slice','Line Onion Slice','Pico']},
+    {group:'🔪 Preliminary Prep',items:['Carm Prep','BJ Prep','Grill Sliders','Slider Veg']},
+    {group:'📦 Supplies',items:['Burger Boxes','Fry Containers','Napkins','Gloves','Paper Towels']},
+  ];
+  const allOpts=ADDON_OPTIONS.flatMap(g=>g.items.map(i=>({group:g.group,item:i})));
+  const optHtml=ADDON_OPTIONS.map(g=>`<optgroup label="${g.group}">${g.items.map(i=>`<option value="${i}">${i}</option>`).join('')}</optgroup>`).join('');
+
+  h+=`<div class="sec">Prep add-ons</div><div class="ao">
+    <div class="aoi">
+      <select class="aoinp" id="aoinp" style="appearance:auto;-webkit-appearance:auto">
+        <option value="">Select item to add...</option>
+        ${optHtml}
+      </select>
+      <button class="aoadd" onclick="addAddon()">+ Add</button>
+    </div>
+    <ul class="aolist" id="aolist">${renderAddons(addons)}</ul>
+  </div>`;
+
+  h+=`<button class="sharebtn" onclick="sharePrep(${JSON.stringify({targets,toPickup,totalBuns,drinks,targetDayName:tdName}).replace(/"/g,'&quot;')})">📋 Copy prep list for staff</button>`;
+
+  document.getElementById('content').innerHTML=h;
+}
+
+function renderAddons(addons){
+  if(!addons.length)return`<li style="font-size:13px;color:var(--mu);padding:8px 0">No custom items — add above</li>`;
+  return addons.map((a,i)=>`<li class="aoitem"><div class="aocheck ${a.done?'done':''}" onclick="toggleAddon(${i})">${a.done?'✓':''}</div><span class="aotext ${a.done?'done':''}">${a.text}</span><button class="aodel" onclick="delAddon(${i})">✕</button></li>`).join('');
+}
+function addAddon(){const inp=document.getElementById('aoinp');const text=(inp.value||'').trim();if(!text)return;const a=lsGet('motorburger_addons')||[];if(a.find(x=>x.text===text&&!x.done)){inp.value='';return;}a.push({text,done:false});lsSet('motorburger_addons',a);inp.value='';document.getElementById('aolist').innerHTML=renderAddons(a);}
+function toggleAddon(i){const a=lsGet('motorburger_addons')||[];a[i].done=!a[i].done;lsSet('motorburger_addons',a);document.getElementById('aolist').innerHTML=renderAddons(a);}
+function delAddon(i){const a=lsGet('motorburger_addons')||[];a.splice(i,1);lsSet('motorburger_addons',a);document.getElementById('aolist').innerHTML=renderAddons(a);}
+
+function sharePrep(data){
+  const addons=(lsGet('motorburger_addons')||[]).filter(a=>!a.done);
+  let txt=`🍔 MOTORBURGER PREP — ${data.targetDayName}\n─────────────────\n`;
+  txt+=`🐄 Beef patties: ${data.targets.beef}\n`;
+  txt+=`🍗 Chicken: ${data.toPickup.chicken===0?'✓ stocked':data.toPickup.chicken+' to pick up'}\n`;
+  txt+=`🐑 Lamb: ${data.toPickup.lamb===0?'✓ stocked':data.toPickup.lamb+' to pick up'}\n`;
+  txt+=`🥬 Veggie: ${data.toPickup.veggie===0?'✓ stocked':data.toPickup.veggie+' to pick up'}\n`;
+  txt+=`🥖 Buns: ${data.totalBuns}\n🧃 Drinks: ${data.drinks}\n`;
+  if(addons.length){txt+=`─────────────────\n📝 Also:\n`;addons.forEach(a=>{txt+=`• ${a.text}\n`;});}
+  navigator.clipboard.writeText(txt).then(()=>{const b=document.querySelector('.sharebtn');b.textContent='✓ Copied!';setTimeout(()=>{b.innerHTML='📋 Copy prep list for staff';},2000);}).catch(()=>alert(txt));
+}
+
+// ── YESTERDAY ──
+async function loadYday(){
+  setStatus('loading','Loading yesterday...');
+  try{
+    const r=await fetch('/.netlify/functions/square-proxy?days=2');
+    const p=await r.json();if(p.error)throw new Error(p.error);
+    ydayD=p.summary;renderYday(ydayD);
+    setStatus('live',`Live · ${new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})}`);
+  }catch(e){showErr(e.message);}
+}
+
+function renderYday(summary){
+  const yday=addDays(new Date(),-1);const ydayStr=dateStr(yday);const ydayName=dow(yday);
+  const dates=summary.byDate||[];
+  const d=dates.find(x=>x.date===ydayStr)||dates[dates.length-2]||dates[dates.length-1];
+  if(!d){document.getElementById('content').innerHTML=`<div class="err"><b>No data for yesterday</b>May have been a Monday.</div>`;return;}
+  const bench=BM[ydayName]||0;const vs=bench>0?((d.gross/bench-1)*100):0;
+  const attach=d.proteins>0?(d.drinks/d.proteins*100):0;
+  const bt=d.byType||{beef:0,chicken:0,lamb:0,veggie:0};const tp=d.proteins;
+  let h=`<div class="yh"><div class="yd">${ydayName}, ${yday.toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})}</div>
+    <div class="yr">${fmt(d.gross)}</div>
+    <div class="yb" style="color:${vs>=0?'var(--gn)':'var(--rd)'}">${vs>=0?'↑':'↓'} ${Math.abs(vs).toFixed(1)}% vs benchmark (${fmt(bench)})</div>
+  </div>
+  <div class="kg">
+    <div class="kc hi"><div class="kl">Revenue</div><div class="kv">${fmt(d.gross)}</div><div class="ks">benchmark ${fmt(bench)}</div></div>
+    <div class="kc"><div class="kl">Proteins</div><div class="kv">${d.proteins}</div><div class="ks">avg ticket ${fmtD(tp>0?d.gross/tp:0)}</div></div>
+    <div class="kc"><div class="kl">Drink attach</div><div class="kv ${attach>=35?'g':attach>=25?'a':'r'}">${attach.toFixed(1)}%</div><div class="ks">${d.drinks} drinks</div></div>
+    <div class="kc"><div class="kl">Go-Karts</div><div class="kv ${d.gokart>15?'r':'g'}">${d.gokart}</div><div class="ks">${d.gokart>15?'⚠ check mischarges':'Normal'}</div></div>
+  </div>
+  <div class="sec">Protein breakdown</div>
+  <div class="pg">
+    <div class="pc"><div class="pi">🐄</div><div class="pv">${bt.beef}</div><div class="pl">Beef</div><div class="pp">${tp>0?Math.round(bt.beef/tp*100):0}%</div></div>
+    <div class="pc"><div class="pi">🍗</div><div class="pv">${bt.chicken}</div><div class="pl">Chicken</div><div class="pp">${tp>0?Math.round(bt.chicken/tp*100):0}%</div></div>
+    <div class="pc"><div class="pi">🐑</div><div class="pv">${bt.lamb}</div><div class="pl">Lamb</div><div class="pp">${tp>0?Math.round(bt.lamb/tp*100):0}%</div></div>
+    <div class="pc"><div class="pi">🥬</div><div class="pv">${bt.veggie}</div><div class="pl">Veggie</div><div class="pp">${tp>0?Math.round(bt.veggie/tp*100):0}%</div></div>
+  </div>`;
+  document.getElementById('content').innerHTML=h;
+}
+
+// ── STATS ──
+async function loadStats(){
+  setStatus('loading','Fetching data...');
+  try{
+    const r=await fetch(`/.netlify/functions/square-proxy?days=${cdays}`);
+    const p=await r.json();if(p.error)throw new Error(p.error);
+    if(ytdRev===0)await loadYtd();
+    statsD=p.summary;renderStats(statsD);
+    setStatus('live',`Live · ${new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})} · ${p.summary?.orderCount||0} orders`);
+  }catch(e){showErr(e.message);}
+}
+
+async function loadYtd(){try{const r=await fetch('/.netlify/functions/square-proxy?ytd=true');const p=await r.json();if(p.summary)ytdRev=p.summary.rev;}catch{}}
+
+function renderChart(byDate){
+  const recent=(byDate||[]).slice(-21);
+  const days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const cols=recent.map(d=>{const day=days[new Date(d.date+'T12:00:00').getDay()];return day==='Saturday'?'#27c484':day==='Sunday'?'#4a8fe8':day==='Friday'?'#f5a623':'#e8471a';});
+  const ctx=document.getElementById('rChart');if(!ctx)return;
+  if(rChart)rChart.destroy();
+  rChart=new Chart(ctx,{type:'bar',data:{labels:recent.map(d=>d.date.slice(5)),datasets:[{data:recent.map(d=>d.gross),backgroundColor:cols,borderRadius:5,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{enabled:revealed,callbacks:{title:i=>`${days[new Date(recent[i[0].dataIndex].date+'T12:00:00').getDay()]}, ${recent[i[0].dataIndex].date}`,label:i=>'$'+i.raw.toLocaleString()},backgroundColor:'#1a1a1a',titleColor:'#f0ede8',bodyColor:'#888680',borderColor:'#2e2e2e',borderWidth:1}},scales:{x:{ticks:{color:'#888680',font:{size:10},maxRotation:45},grid:{display:false},border:{display:false}},y:{ticks:{color:'#888680',font:{size:11},callback:v=>revealed?'$'+(v>=1000?(v/1000).toFixed(0)+'k':v):'●●●'},grid:{color:'#2e2e2e'},border:{display:false}}}}});
+}
+
+function renderStats(summary){
+  const{rev,proteins,drinks,byDate,dowAvgs,proteinItems,proteinsByType}=summary;
+  const td=(byDate||[]).length;const attach=proteins>0?drinks/proteins*100:0;
+  const flags=[];
+  if(attach<25)flags.push({t:'d',i:'🧃',ti:`Drink attach: ${attach.toFixed(1)}%`,b:'Low — target 35%+.'});
+  else if(attach<35)flags.push({t:'w',i:'🧃',ti:`Drink attach: ${attach.toFixed(1)}%`,b:'Getting there.'});
+  else flags.push({t:'ok',i:'🧃',ti:`Drink attach: ${attach.toFixed(1)}%`,b:'Strong.'});
+  const best=byDate&&[...byDate].sort((a,b)=>b.gross-a.gross)[0];
+  if(best&&best.gross>3000)flags.push({t:'ok',i:'🔥',ti:`Big day: ${best.date}`,b:`${fmt(best.gross)} — ${best.proteins} proteins${best.gross>4000?' — record!':''}`});
+  const doy=Math.floor((new Date()-new Date(new Date().getFullYear(),0,0))/86400000);
+  const pace=ytdRev>0?(ytdRev/doy)*365:0;const paceVs=pace-TARGET;const ytdPct=Math.min(100,ytdRev/TARGET*100);
+  const maxQ=proteinItems?.[0]?.qty||1;const pb=proteinsByType||{beef:0,chicken:0,lamb:0,veggie:0};
+  const tl={beef:'Beef',chicken:'Chicken',lamb:'Lamb',veggie:'Veggie'};
+
+  let h=`<div class="kg">
+    <div class="kc hi"><div class="kl">Revenue (${cdays}d)</div><div class="kv">${fmt(rev)}</div><div class="ks">${td} days · ${fmt(td>0?rev/td:0)}/day avg</div></div>
+    <div class="kc"><div class="kl">Proteins</div><div class="kv">${proteins}</div><div class="ks">${td>0?(proteins/td).toFixed(1):0}/day avg</div></div>
+    <div class="kc"><div class="kl">Drink attach</div><div class="kv ${attach>=35?'g':attach>=25?'a':'r'}">${attach.toFixed(1)}%</div><div class="ks">${drinks} drinks · target 35%+</div></div>
+    <div class="kc"><div class="kl">Avg ticket</div><div class="kv">${proteins>0?fmtD(rev/proteins):'$0'}</div><div class="ks">per protein</div></div>
+  </div>
+  <div class="sec">Protein breakdown</div>
+  <div class="pg">
+    <div class="pc"><div class="pi">🐄</div><div class="pv">${pb.beef}</div><div class="pl">Beef</div><div class="pp">${proteins>0?Math.round(pb.beef/proteins*100):0}%</div></div>
+    <div class="pc"><div class="pi">🍗</div><div class="pv">${pb.chicken}</div><div class="pl">Chicken</div><div class="pp">${proteins>0?Math.round(pb.chicken/proteins*100):0}%</div></div>
+    <div class="pc"><div class="pi">🐑</div><div class="pv">${pb.lamb}</div><div class="pl">Lamb</div><div class="pp">${proteins>0?Math.round(pb.lamb/proteins*100):0}%</div></div>
+    <div class="pc"><div class="pi">🥬</div><div class="pv">${pb.veggie}</div><div class="pl">Veggie</div><div class="pp">${proteins>0?Math.round(pb.veggie/proteins*100):0}%</div></div>
+  </div>`;
+
+  if(ytdRev>0)h+=`<div class="kc full" style="background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);padding:14px;margin-bottom:14px;">
+    <div class="kl">2026 Annual · target ${fmt(TARGET)}</div>
+    <div class="kv ${paceVs>=0?'g':'r'}">${fmt(ytdRev)} YTD</div>
+    <div class="ab"><div class="af" style="width:${ytdPct.toFixed(1)}%"></div></div>
+    <div class="al"><span>${ytdPct.toFixed(1)}% of target</span><span>Pace: ${fmt(pace)}/yr <span class="${paceVs>=0?'pos':'neg'}">(${paceVs>=0?'+':''}${fmt(paceVs)})</span></span></div>
+  </div>`;
+
+  if(flags.length){h+=`<div class="sec">Flags</div>`;flags.forEach(f=>{h+=`<div class="fl ${f.t}"><div class="fi">${f.i}</div><div class="fb"><b>${f.ti}</b>${f.b}</div></div>`;});}
+
+  h+=`<div class="sec">Daily revenue</div><div class="cc"><div class="ct"><span style="color:#27c484">■</span> Sat &nbsp;<span style="color:#4a8fe8">■</span> Sun &nbsp;<span style="color:#f5a623">■</span> Fri &nbsp;<span style="color:#e8471a">■</span> Weekday</div><div style="position:relative;height:180px"><canvas id="rChart"></canvas></div></div>`;
+
+  h+=`<div class="sec">Day of week vs benchmark</div><div class="cc"><table class="dt"><thead><tr><th>Day</th><th>Avg</th><th>Benchmark</th><th>Diff</th></tr></thead><tbody>`;
+  ['Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'].forEach(day=>{
+    const d=dowAvgs?.[day];const bench=BM[day];
+    if(d){const pct=((d.avgRevenue/bench-1)*100).toFixed(0);h+=`<tr><td>${day.substring(0,3)}</td><td>${fmt(d.avgRevenue)}</td><td style="color:var(--mu)">${fmt(bench)}</td><td><span class="${d.avgRevenue>=bench?'pos':'neg'}">${d.avgRevenue>=bench?'+':''}${pct}%</span></td></tr>`;}
+  });
+  h+=`</tbody></table></div>`;
+
+  h+=`<div class="sec">Item mix</div><div class="cc">`;
+  if(proteinItems?.length){proteinItems.forEach(item=>{const pct=(item.qty/maxQ*100).toFixed(0);const tc=item.type==='beef'?'tb':item.type==='chicken'?'tch':item.type==='lamb'?'tla':'tv';const bc=item.type==='beef'?'bb':item.type==='chicken'?'bc':item.type==='lamb'?'bla':'bv';h+=`<div class="ir"><div class="in">${item.name}</div><span class="it ${tc}">${tl[item.type]||''}</span><div class="ibw"><div class="ibt"><div class="ibf ${bc}" style="width:${pct}%"></div></div></div><div class="iq">${item.qty}</div><div class="iv">${fmt(item.gross)}</div></div>`;});}
+  h+=`</div>`;
+
+  document.getElementById('content').innerHTML=h;
+  setTimeout(()=>renderChart(byDate),50);
+}
+
+loadPrep();
+</script>
+</body>
+</html>
