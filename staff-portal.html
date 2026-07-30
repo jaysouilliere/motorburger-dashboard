@@ -393,6 +393,26 @@ async function deleteShift(id){
 function getStaffPin(staff){return lsGet('mb_pin_'+staff.id)||null;}
 function setStaffPin(staffId,pin){lsSet('mb_pin_'+staffId,pin);}
 
+// ── STAFF EDIT OVERRIDES ──
+// Lets Team → Edit change name/phone/email/rates for anyone (built-in STAFF
+// array or an added employee) without touching the hardcoded STAFF array
+// itself. Stored keyed by staff id, merged on top of the base record
+// whenever the roster is read.
+function getStaffOverrides(){return lsGet('mb_staff_overrides')||{};}
+function setStaffOverride(id,data){
+  const o=getStaffOverrides();
+  o[id]={...(o[id]||{}),...data};
+  lsSet('mb_staff_overrides',o);
+}
+function getRosterStaff(){
+  const extraStaff=lsGet('mb_extra_staff')||[];
+  const offboarded=lsGet('mb_offboarded')||[];
+  const overrides=getStaffOverrides();
+  return [...STAFF,...extraStaff]
+    .map(s=>overrides[s.id]?{...s,...overrides[s.id],roles:(overrides[s.id].roles||s.roles)}:s)
+    .filter(s=>!offboarded.find(o=>o.id===s.id));
+}
+
 function getActiveShift(staffId){
   return getShifts().find(s=>s.staffId===staffId&&!s.clockOut);
 }
@@ -472,8 +492,7 @@ function pinTap(val){
 
 function checkPin(){
   if(pinEntry===OWNER_PIN){pinEntry='';pinError=false;appState='manager';render();return;}
-  const extraStaff=lsGet('mb_extra_staff')||[];
-  const allStaff=[...STAFF,...extraStaff];
+  const allStaff=getRosterStaff();
   const staff=allStaff.find(s=>getStaffPin(s)===pinEntry);
   if(staff){
     currentStaff=staff;pinEntry='';pinError=false;
@@ -1330,9 +1349,7 @@ async function exportPayPeriodCSV(){
 // it shows up in Pay Period and CSV export exactly like real clock punches.
 function renderMgrManualEntry(main){
   const date=lsGet('mb_manual_date')||new Date().toLocaleDateString('en-CA',{timeZone:'America/Detroit'});
-  const extraStaff=lsGet('mb_extra_staff')||[];
-  const offboarded=lsGet('mb_offboarded')||[];
-  const allStaff=[...STAFF,...extraStaff].filter(s=>!offboarded.find(o=>o.id===s.id));
+  const allStaff=getRosterStaff();
 
   const existing={};
   getShifts().filter(s=>s.date===date&&s.manualEntry).forEach(s=>{existing[s.staffId]=s;});
@@ -1395,9 +1412,7 @@ async function submitManualEntry(){
   if(!date){alert('Pick a date.');return;}
   const grat=parseFloat(document.getElementById('me-grat').value)||0;
 
-  const extraStaff=lsGet('mb_extra_staff')||[];
-  const offboarded=lsGet('mb_offboarded')||[];
-  const allStaff=[...STAFF,...extraStaff].filter(s=>!offboarded.find(o=>o.id===s.id));
+  const allStaff=getRosterStaff();
 
   const rows=[];
   const idsToDelete=[]; // real (non-manual) punches for this date being superseded by manual numbers
@@ -1444,9 +1459,8 @@ async function submitManualEntry(){
 }
 
 function renderMgrTeam(main){
-  const extraStaff=lsGet('mb_extra_staff')||[];
+  const allStaff=getRosterStaff();
   const offboarded=lsGet('mb_offboarded')||[];
-  const allStaff=[...STAFF,...extraStaff].filter(s=>!offboarded.find(o=>o.id===s.id));
   const teamView=lsGet('mb_team_view')||'roster';
 
   let body='';
@@ -1467,6 +1481,27 @@ function renderMgrTeam(main){
         <input id="new-rate2" class="ls-inp" type="number" placeholder="Rate for 2nd role" style="width:100%">
         <select id="new-tips2" class="sel"><option value="true">✓ Tip eligible</option><option value="false">✗ No tips</option></select>
         <button class="submit-btn" onclick="addEmployee()">Add Employee</button>
+        <button class="back-btn" onclick="lsSet('mb_team_view','roster');renderMgrTeam(document.getElementById('main'))">← Back</button>
+      </div>
+    </div>`;
+  } else if(teamView==='edit'){
+    const sid=lsGet('mb_edit_id');
+    const staff=allStaff.find(s=>s.id===sid);
+    const currentPin=staff?getStaffPin(staff):'';
+    body=`<div class="sec">Edit ${staff?.name||'Employee'}</div>
+    <div class="card">
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <input id="ed-name" class="ls-inp" type="text" placeholder="Full name" value="${staff?.name||''}" style="width:100%">
+        <input id="ed-phone" class="ls-inp" type="tel" placeholder="Phone number" value="${staff?.phone||''}" style="width:100%">
+        <input id="ed-email" class="ls-inp" type="email" placeholder="Email address" value="${staff?.email||''}" style="width:100%">
+        <div style="font-size:12px;color:var(--mu);font-weight:600">Rate — ${staff?.roles?.[0]?.name||'Primary role'}</div>
+        <input id="ed-rate1" class="ls-inp" type="number" placeholder="Hourly rate" value="${staff?.roles?.[0]?.rate??''}" style="width:100%">
+        ${staff?.roles?.[1]?`<div style="font-size:12px;color:var(--mu);font-weight:600">Rate — ${staff.roles[1].name}</div>
+        <input id="ed-rate2" class="ls-inp" type="number" placeholder="Hourly rate" value="${staff.roles[1].rate??''}" style="width:100%">`:''}
+        <div style="font-size:12px;color:var(--mu);font-weight:600;margin-top:6px">PIN (6 digits)</div>
+        <input id="ed-pin" class="ls-inp" type="text" inputmode="numeric" maxlength="6" placeholder="e.g. 000385" value="${currentPin||''}" style="width:100%">
+        <div id="ed-status" style="font-size:13px"></div>
+        <button class="submit-btn" onclick="saveEditStaff('${sid}')">Save Changes</button>
         <button class="back-btn" onclick="lsSet('mb_team_view','roster');renderMgrTeam(document.getElementById('main'))">← Back</button>
       </div>
     </div>`;
@@ -1516,7 +1551,6 @@ function renderMgrTeam(main){
     body=`<div class="sec">Active staff (${allStaff.length})</div>
     ${allStaff.map(s=>{
       const pin=getStaffPin(s)||null;
-      const isExtra=extraStaff.find(e=>e.id===s.id);
       return `<div class="staff-card">
         <div class="staff-card-hdr">
           <div class="staff-avatar">${s.initials}</div>
@@ -1526,8 +1560,8 @@ function renderMgrTeam(main){
             ${s.startDate?`<div style="font-size:11px;color:var(--mu)">Started: ${s.startDate}</div>`:''}
           </div>
           <div style="display:flex;gap:6px">
-            <button class="edit-btn" onclick="setPin('${s.id}')">PIN</button>
-            <button class="edit-btn" style="color:var(--rd);border-color:var(--rd)" onclick="startOffboard(''+s.id+'')">✕</button>
+            <button class="edit-btn" onclick="lsSet('mb_edit_id','${s.id}');lsSet('mb_team_view','edit');renderMgrTeam(document.getElementById('main'))">Edit</button>
+            <button class="edit-btn" style="color:var(--rd);border-color:var(--rd)" onclick="startOffboard('${s.id}')">Remove</button>
           </div>
         </div>
         ${s.phone?`<div style="font-size:12px;color:var(--mu);margin-bottom:4px">📱 ${s.phone}</div>`:''}
@@ -1564,8 +1598,8 @@ function slugify(name){ return (name||'').trim().toLowerCase().replace(/[^a-z0-9
 
 function buildNameMap(){
   const map={};
-  const extraStaff=lsGet('mb_extra_staff')||[];
-  [...STAFF,...extraStaff].forEach(s=>{
+  const allStaff=getRosterStaff();
+  allStaff.forEach(s=>{
     map[s.name.split(' ')[0].toLowerCase()]=s.id;
     map[s.name.toLowerCase()]=s.id;
     // Staff ids are usually the everyday nickname (e.g. 'mitch' for
@@ -1719,8 +1753,7 @@ function confirmOffboard(staffId){
   const date=document.getElementById('ob-date').value;
   const reason=document.getElementById('ob-reason').value;
   const notes=document.getElementById('ob-notes').value;
-  const extraStaff=lsGet('mb_extra_staff')||[];
-  const allStaff=[...STAFF,...extraStaff];
+  const allStaff=getRosterStaff();
   const staff=allStaff.find(s=>s.id===staffId);
   if(!staff)return;
   const offboarded=lsGet('mb_offboarded')||[];
@@ -1761,8 +1794,7 @@ function addEmployee(){
 }
 
 function setPin(staffId){
-  const extraStaff=lsGet('mb_extra_staff')||[];
-  const allStaff=[...STAFF,...extraStaff];
+  const allStaff=getRosterStaff();
   const staff=allStaff.find(s=>s.id===staffId);
   if(!staff)return;
   const pin=prompt(`Set 6-digit PIN for ${staff.name}:\n(Format: 00 or 01 + birth month + birth year\ne.g. 00 + 03 + 85 = 000385)`);
@@ -1775,6 +1807,40 @@ function setPin(staffId){
   if(conflict||pin===OWNER_PIN){alert('That PIN is already in use. Choose a different one.');return;}
   setStaffPin(staffId,pin);
   render();
+}
+
+function saveEditStaff(staffId){
+  const name=document.getElementById('ed-name').value.trim();
+  const phone=document.getElementById('ed-phone').value.trim();
+  const email=document.getElementById('ed-email').value.trim();
+  const rate1=parseFloat(document.getElementById('ed-rate1').value);
+  const rate2input=document.getElementById('ed-rate2');
+  const pin=document.getElementById('ed-pin').value.trim();
+  const status=document.getElementById('ed-status');
+
+  if(!name){status.textContent='Name is required.';status.style.color='var(--rd)';return;}
+
+  const allStaff=getRosterStaff();
+  const staff=allStaff.find(s=>s.id===staffId);
+  if(!staff)return;
+
+  const roles=staff.roles.map((r,i)=>{
+    if(i===0 && !isNaN(rate1)) return {...r,rate:rate1};
+    if(i===1 && rate2input && !isNaN(parseFloat(rate2input.value))) return {...r,rate:parseFloat(rate2input.value)};
+    return r;
+  });
+
+  setStaffOverride(staffId,{name,phone,email,roles});
+
+  if(pin){
+    if(!/^\d{6}$/.test(pin)){status.textContent='PIN must be exactly 6 digits.';status.style.color='var(--rd)';return;}
+    const conflict=allStaff.find(s=>s.id!==staffId&&getStaffPin(s)===pin);
+    if(conflict||pin===OWNER_PIN){status.textContent='That PIN is already in use — choose a different one.';status.style.color='var(--rd)';return;}
+    setStaffPin(staffId,pin);
+  }
+
+  lsSet('mb_team_view','roster');
+  renderMgrTeam(document.getElementById('main'));
 }
 
 // Init
