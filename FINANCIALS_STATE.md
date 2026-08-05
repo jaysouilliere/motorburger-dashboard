@@ -55,3 +55,18 @@ Tue 368 / Wed 404 / Thu 581 / Fri 1238 / Sat 2568 / Sun 1796
 
 ## Workflow Rule
 End of every session: update this file with what changed financially. Don't re-summarize conversation in chat — edit this file directly.
+## July 2026 Price Increase Review (checked 2026-08-05, ~1 month post-increase)
+Pulled directly from Square reporting (card sales/tips only — cash tips not tracked by Square).
+
+**Tips did NOT decline.** Tip rate (tips ÷ total collected) actually rose:
+- July by year: 2023 8.00% | 2024 8.24% | 2025 8.40% | 2026 8.61% (highest of the 4)
+- Apr-Jul 2026 monthly: Apr 8.86% | May 8.69% | Jun 8.35% | Jul 8.61% (ticked up, not down)
+- Weekly, spanning the price-increase date: bounced 8.2%-8.7% both before and after — no post-increase collapse.
+
+**Revenue/ticket also look healthy:**
+- July 2026 total collected $34,158 — 2nd-best July of last 4 years (behind only 2023's $37,713), ahead of both 2024 ($30,797) and 2025 ($30,563).
+- Avg order value hit $21.00 in July — highest of any month in the dataset.
+
+**Only soft spot:** order count dropped ~15% June→July (1,703→1,452). Checked against seasonal norms: 2023 June→July -4%, 2024 -22%, 2025 -7%. 2026's -15% sits within that normal range — looks like ordinary July seasonality, not a price-shock reaction.
+
+**Conclusion:** No evidence the price increase hurt tips, ticket size, or volume beyond normal seasonal softening. Worth re-checking again after a full 2 months once August data is in.
