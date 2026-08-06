@@ -70,3 +70,33 @@ Pulled directly from Square reporting (card sales/tips only — cash tips not tr
 **Only soft spot:** order count dropped ~15% June→July (1,703→1,452). Checked against seasonal norms: 2023 June→July -4%, 2024 -22%, 2025 -7%. 2026's -15% sits within that normal range — looks like ordinary July seasonality, not a price-shock reaction.
 
 **Conclusion:** No evidence the price increase hurt tips, ticket size, or volume beyond normal seasonal softening. Worth re-checking again after a full 2 months once August data is in.
+## Xero Connected (2026-08-05)
+Read-only Xero MCP connected (org "This is motor Inc"). Gives direct P&L, cash position, balance sheet, AR/AP aging. No bills/AP tracked at all in Xero — get_aged_payables returns zero; expenses are coded straight from bank feed with no itemized vendor bills. No GL/transaction-detail API either — that gap was filled by Jay manually exporting Account Transactions reports (xlsx) from the Xero UI for Cost of Goods Sold -Food, 2024-2026 YTD.
+
+## July 2026 Actual P&L (Xero, accrual) vs July 2025
+Income $24,291.60 (+1.5% YoY) | Food cost $10,909.79 = 44.9% of income (vs 30.5% July 2025) | Total expenses $8,491.27 | Net profit -$1,421.02 (vs -$66.19 July 2025). Real YoY profitability decline, driven by cost side, not revenue side — Square's sales/tips data (see prior section) looked fine; the booked P&L didn't.
+
+Flag: Xero's July income ($24,292) runs ~18% below Square's July net sales ($29,477, +11.8% YoY same month). Worth confirming with bookkeeper that July's books are fully caught up before treating this July income figure as final.
+
+## Food Cost — confirmed as an ongoing pattern, not a May one-off
+Monthly food cost % 2026: Apr 36.8% | May 50.4% | Jun 33.6% | Jul 44.9% — oscillating well above the healthy 28-32% range in 2 of the last 4 months, and it tracks almost exactly with which months were profitable vs not (prime cost, food+labor, hit ~70.6% in July vs ~49.3% in June).
+
+Root cause (from transaction-level detail, not a bookkeeping error): July's +$3,615 YoY food cost jump is 87% explained by heavier/more frequent buying at 3 wholesale vendors — Restaurant Depot (+$971, went from 3 to 6 trips/month), Fairway Packing Co. (+$939, 4→5 orders, each bigger), Morton (+$1,232). Partly offset by buying less from GFS Store (-$785) and Honey Bee Market (-$336). Reads as a genuine shift toward heavier wholesale buying — checked for a single bad/miscoded entry, found none.
+
+Still unknown: whether this is supplier price inflation or just higher order volume/waste — Xero's transaction exports only show vendor totals, not itemized unit prices or quantities. Next step: compare a recent Restaurant Depot/Fairway receipt's unit prices against one from ~July 2025.
+
+## NNN Offset Theory — confirmed with real numbers
+July 2026: DSC Shared Expenses NNN $3,728.40 booked vs $0 in July 2025, while Catering Revenue was $0 (vs $1,371.20 July 2025). Directly confirms the offset-visibility mechanism noted earlier — this isn't a new cost, it's an existing obligation that stopped being paid in-kind via catering and started hitting cash instead.
+
+## Telephone Expense Anomaly — still unresolved, new data point
+Now four data points across 2026: Mar spike, Apr -$2,239.14 (credit), May +$2,139.74, Jun +$90.74 (normal), Jul -$1,825.80 (another credit). Two large negative/credit postings in four months on a phone-bill line isn't normal bill behavior — looks like a miscoded entry pattern. Still needs a call to the bookkeeper.
+
+## Marketing/Software Spend Decisions
+Evaluated and declined Dext (~$27-31.50+/mo) and owner.com ($249-499/mo + ~$1K setup) given current margin. Went with a free/low-cost stack instead (Square Online, Google Business Profile, Square Marketing ~$15/mo). Full detail now lives in a separate MARKETING_STATE.md file in this project.
+
+## Open Items / Next Steps (updates)
+- RESOLVED (partially): "May food cost 49.78%, not yet explained" — now understood as an ongoing 2-month-in-4 pattern, root-caused to vendor buying shift (see Food Cost section). Still open: is it price-driven or volume-driven.
+- NEW: pull a recent Restaurant Depot/Fairway receipt, compare unit prices to ~July 2025, to settle price-vs-volume question.
+- NEW: confirm with bookkeeper whether July 2026 Xero books are fully posted (income gap vs Square).
+- Telephone Expense: still open, now 2 large credit postings (Apr, Jul) instead of 1 — escalate to bookkeeper call.
+- Existing open items (NNN itemization from DSC, catering-offset history, lease renegotiation) — unchanged, still open.
