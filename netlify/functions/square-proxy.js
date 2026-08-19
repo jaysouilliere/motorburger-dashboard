@@ -1,5 +1,3 @@
-
-
 exports.handler = async function (event) {
   const TOKEN = process.env.SQUARE_TOKEN;
   const LOCATION_ID = process.env.SQUARE_LOCATION_ID;
@@ -238,10 +236,15 @@ exports.handler = async function (event) {
       // array defensively in case this differs by account/API version.
       const list = Array.isArray(data) ? data : (data.results || data.events || []);
 
+      // Whitelist only DEFINITE and TENTATIVE bookings. Earlier assumption that
+      // Tripleseat's /search endpoint already excludes LOST was wrong — a LOST
+      // "Team dinner" (Beer Garden, 60 guests) showed up live on the staff app
+      // and threw off kitchen planning. PROSPECT (unconfirmed leads), LOST,
+      // CLOSED, and WAITLIST are now all excluded; only real, still-active
+      // bookings reach the dashboard/staff portal.
+      const TS_ALLOWED_STATUSES = ['DEFINITE', 'TENTATIVE'];
       const events = list
-        // /search already excludes LOST + deleted; also drop PROSPECT since those
-        // are just leads/pipeline, not real bookings that affect the kitchen yet.
-        .filter(e => (e.status||'').toUpperCase() !== 'PROSPECT')
+        .filter(e => TS_ALLOWED_STATUSES.includes((e.status||'').toUpperCase()))
         .map(e => {
           // Tripleseat's docs describe "rooms" as an array but show a single
           // object in the example response — handle both shapes defensively.
