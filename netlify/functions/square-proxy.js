@@ -153,6 +153,10 @@ exports.handler = async function (event) {
   // returned 0 events every time. AXS also lists each Masonic ROOM on its own page,
   // so both rooms are scraped and labelled with their exact names (staff use the
   // exact room name to know capacity: main theatre ~4,400 vs Jack White ~1,700).
+  // NOTE (2026-10-14): AXS now returns 403 to Netlify's servers, so this scrape comes
+  // back empty. The weekly Masonic list pushed to masonic-events.js (see
+  // getSavedMasonicEvents below) is the reliable source; this scrape is kept as a
+  // best-effort bonus in case AXS ever stops blocking.
   const MASONIC_ROOMS = [
     { venue: 'Masonic Temple Theatre',     url: 'https://www.axs.com/venues/126098/masonic-temple-theatre-detroit-tickets' },
     { venue: 'Masonic Jack White Theatre', url: 'https://www.axs.com/venues/101070/masonic-jack-white-theatre-detroit-tickets' },
@@ -192,6 +196,21 @@ exports.handler = async function (event) {
       } catch(e) { errors.push(`${room.venue}: ${e.message}`); }
     }));
     return { events, error: errors.length ? errors.join('; ') : null };
+  }
+
+  // Weekly Masonic list — saved by masonic-events.js (blob store "motorburger-masonic").
+  // The weekly run that visits the Masonic site POSTs its results there, because AXS
+  // blocks scraping from Netlify. Merged into the events feed below, so it shows on the
+  // owner dashboard AND on the staff portal's today's-events card at punch-in.
+  async function getSavedMasonicEvents() {
+    try {
+      const { getStore, connectLambda } = require('@netlify/blobs');
+      connectLambda(event);
+      const store = getStore('motorburger-masonic');
+      const saved = await store.get('events', { type: 'json' });
+      if (!saved || !Array.isArray(saved.events)) return { events: [], updatedAt: null, error: null };
+      return { events: saved.events, updatedAt: saved.updatedAt || null, error: null };
+    } catch(e) { return { events: [], updatedAt: null, error: e.message }; }
   }
 
   // Tripleseat — DSC's own booked private events (parties, pedal pubs, etc.)
@@ -350,22 +369,44 @@ exports.handler = async function (event) {
   }
 
   async function getEvents() {
-    const [tm, masonic, tripleseat] = await Promise.all([getTicketmasterEvents(), getMasonicEvents(), getTripleseatEvents()]);
-    // Dedupe Masonic (AXS) vs Ticketmaster on name + date, so the same show listed
-    // on both isn't printed twice — but a same-named show on another date still shows.
-    const seen = new Set(tm.events.map(e=>e.name.toLowerCase()+'|'+e.date));
+    const [tm, masonic, savedMasonic, tripleseat] = await Promise.all([
+      getTicketmasterEvents(), getMasonicEvents(), getSavedMasonicEvents(), getTripleseatEvents(),
+    ]);
+    // Dedupe on a normalized name (letters/numbers only) + date, so the same show listed
+    // on Ticketmaster, AXS, and the weekly Masonic list isn't printed twice — but a
+    // same-named show on another date still shows. Ticketmaster wins (it has the ticket link).
+    const norm = s => String(s||'').toLowerCase().replace(/[^a-z0-9]+/g,'');
+    const keyOf = e => norm(e.name)+'|'+e.date;
+    const seen = new Set(tm.events.map(keyOf));
     const merged = [...tm.events];
-    masonic.events.forEach(e => { if (!seen.has(e.name.toLowerCase()+'|'+e.date)) merged.push(e); });
+    [...masonic.events, ...savedMasonic.events].forEach(e => {
+      const k = keyOf(e);
+      if (!seen.has(k)) { seen.add(k); merged.push(e); }
+    });
     merged.push(...tripleseat.events); // private events — no dedupe needed against public shows
     merged.sort((a,b) => (a.date||'').localeCompare(b.date||''));
+
+    // The AXS scrape is blocked from Netlify, so its error is expected noise whenever the
+    // weekly list is fresh. If the weekly list goes stale (>10 days), surface that instead.
+    const savedAgeDays = savedMasonic.updatedAt ? (Date.now() - new Date(savedMasonic.updatedAt)) / 86400000 : null;
+    const savedFresh = savedMasonic.events.length > 0 && savedAgeDays !== null && savedAgeDays <= 10;
+    let masonicError = masonic.error;
+    if (savedMasonic.error) masonicError = (masonicError ? masonicError + '; ' : '') + `Saved Masonic list: ${savedMasonic.error}`;
+    else if (savedFresh) masonicError = null;
+    else if (savedMasonic.events.length > 0 && savedAgeDays !== null) {
+      masonicError = (masonicError ? masonicError + '; ' : '') + `Saved Masonic list is ${Math.round(savedAgeDays)} days old`;
+    }
+
     return {
       eventDays: EVENT_DAYS,
       events: merged,
       masonicScraped: masonic.events.length > 0,
-      masonicCount: masonic.events.length,
+      masonicCount: masonic.events.length + savedMasonic.events.length,
+      masonicSavedCount: savedMasonic.events.length,
+      masonicSavedUpdatedAt: savedMasonic.updatedAt,
       ticketmasterCount: tm.events.length,
       tripleseatCount: tripleseat.events.length,
-      errors: { ticketmaster: tm.error, masonic: masonic.error, tripleseat: tripleseat.error },
+      errors: { ticketmaster: tm.error, masonic: masonicError, tripleseat: tripleseat.error },
     };
   }
 
@@ -550,7 +591,7 @@ exports.handler = async function (event) {
 
     const results = await Promise.all(promises);
     const summary = processOrders(results[0]);
-    
+
     // For prep: use staff blob inventory if available, otherwise empty
     let inventory = {};
     let staffCloseout = null;
@@ -559,10 +600,10 @@ exports.handler = async function (event) {
       inventory = staffCloseout.counts || {};
     }
 
-    return { 
-      statusCode:200, 
-      headers, 
-      body:JSON.stringify({summary, inventory, staffCloseout}) 
+    return {
+      statusCode:200,
+      headers,
+      body:JSON.stringify({summary, inventory, staffCloseout})
     };
   } catch(err) {
     return { statusCode:500, headers, body:JSON.stringify({error:err.message}) };
