@@ -252,6 +252,32 @@ exports.handler = async function (event) {
     });
     const data = await r.json();
     if (!r.ok) {
+      // FIXED 2026-11-03: two callers (dashboard, daily sync, weekly email) can hit an
+      // expired access token at the same moment. Both refresh with the same refresh
+      // token; Tripleseat rotates it for the first and rejects the second with
+      // invalid_grant — which emptied the whole Tripleseat feed. On that error, wait,
+      // re-read storage and use the token pair the winning caller just saved.
+      if (r.status === 400 && /invalid_grant/i.test(JSON.stringify(data))) {
+        await new Promise(res => setTimeout(res, 1500));
+        let fresh = null;
+        try { fresh = await store.get('tokens', { type: 'json' }); } catch(e) { fresh = null; }
+        if (fresh && fresh.access_token && fresh.expires_at && Date.now() < fresh.expires_at - 60000) {
+          return fresh.access_token;
+        }
+        if (fresh && fresh.refresh_token && fresh.refresh_token !== refreshTokenToUse) {
+          const r2 = await fetch(TS_TOKEN_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: new URLSearchParams({ grant_type: "refresh_token", refresh_token: fresh.refresh_token, client_id: TS_CLIENT_ID, client_secret: TS_CLIENT_SECRET }),
+          });
+          const d2 = await r2.json();
+          if (r2.ok) {
+            const t2 = { access_token: d2.access_token, refresh_token: d2.refresh_token || fresh.refresh_token, expires_at: Date.now() + (d2.expires_in || 7200) * 1000 };
+            try { await store.setJSON('tokens', t2); } catch(e) {}
+            return d2.access_token;
+          }
+        }
+      }
       const hint = usingBlobToken
         ? ' (this was a blob-stored, previously-rotated token — if this keeps failing, re-run tripleseat-auth.js to get a fresh one)'
         : ' (this was the Netlify env var token — if it keeps failing right after a fresh tripleseat-auth.js run, check for copy/paste issues)';
