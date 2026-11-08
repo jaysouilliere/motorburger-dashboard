@@ -2,6 +2,9 @@ exports.handler = async function (event) {
   const TOKEN = process.env.SQUARE_TOKEN;
   const LOCATION_ID = process.env.SQUARE_LOCATION_ID;
   const TM_KEY = process.env.TICKETMASTER_KEY;
+  // SeatGeek Platform API (free client id from seatgeek.com/account/develop).
+  // Replaces the AXS scrape for Masonic shows — AXS 403s Netlify's servers.
+  const SG_CLIENT_ID = process.env.SEATGEEK_CLIENT_ID;
   const TS_CLIENT_ID = process.env.TRIPLESEAT_CLIENT_ID;
   const TS_CLIENT_SECRET = process.env.TRIPLESEAT_CLIENT_SECRET;
   const TS_REFRESH_TOKEN = process.env.TRIPLESEAT_REFRESH_TOKEN;
@@ -148,60 +151,76 @@ exports.handler = async function (event) {
     } catch(e) { return { events: [], error: e.message }; }
   }
 
-  // Masonic scraper — AXS listing pages (themasonic.com JSON-LD gets 403'd).
-  // FIXED 2026-10-02: the old code pointed at a stale AXS venue id (101490) and
-  // returned 0 events every time. AXS also lists each Masonic ROOM on its own page,
-  // so both rooms are scraped and labelled with their exact names (staff use the
-  // exact room name to know capacity: main theatre ~4,400 vs Jack White ~1,700).
-  // NOTE (2026-10-14): AXS now returns 403 to Netlify's servers, so this scrape comes
-  // back empty. The weekly Masonic list pushed to masonic-events.js (see
-  // getSavedMasonicEvents below) is the reliable source; this scrape is kept as a
-  // best-effort bonus in case AXS ever stops blocking.
-  const MASONIC_ROOMS = [
-    { venue: 'Masonic Temple Theatre',     url: 'https://www.axs.com/venues/126098/masonic-temple-theatre-detroit-tickets' },
-    { venue: 'Masonic Jack White Theatre', url: 'https://www.axs.com/venues/101070/masonic-jack-white-theatre-detroit-tickets' },
-  ];
+  // Masonic shows — SeatGeek Platform API (CHANGED 2026-11-08).
+  // AXS 403s Netlify's servers and themasonic.com loads its calendar with JavaScript,
+  // so neither can be read from here. SeatGeek lists every ticketed Masonic event
+  // (concerts, comedy, speakers) for both rooms. Step 1 finds the Masonic venue ids in
+  // Detroit; step 2 pulls each venue's events for the look-ahead window.
+  // Rooms are labelled with their exact names (staff use them to know capacity:
+  // main theatre ~4,400 vs Jack White ~1,700).
+  function masonicRoomName(sgName) {
+    const n = String(sgName || '');
+    if (/jack\s*white/i.test(n)) return 'Masonic Jack White Theatre';
+    if (/temple\s*theat|cathedral|^\s*(the\s+)?(detroit\s+)?masonic(\s+temple)?(\s*[-–]\s*detroit|\s+detroit)?\s*$/i.test(n)) return 'Masonic Temple Theatre';
+    return n; // any other Masonic room keeps SeatGeek's own name
+  }
+
+  async function sgGet(path, params) {
+    const qs = new URLSearchParams({ ...params, client_id: SG_CLIENT_ID });
+    const r = await fetch(`https://api.seatgeek.com/2/${path}?${qs.toString()}`);
+    if (!r.ok) { const t = await r.text(); throw new Error(`SeatGeek ${r.status} on /${path}: ${t.substring(0,200)}`); }
+    return r.json();
+  }
+
+  async function getSeatGeekMasonicVenues() {
+    const data = await sgGet('venues', { city: 'Detroit', q: 'masonic', per_page: '25' });
+    return (data.venues || [])
+      .filter(v => /masonic/i.test(v.name || '') && (!v.state || v.state === 'MI'))
+      .map(v => ({ id: v.id, sgName: v.name, room: masonicRoomName(v.name) }));
+  }
+
   async function getMasonicEvents() {
-    const events = [];
-    const errors = [];
-    await Promise.all(MASONIC_ROOMS.map(async room => {
-      try {
-        const r = await fetch(room.url, {
-          headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
-        });
-        if (!r.ok) { errors.push(`${room.venue}: AXS ${r.status}`); return; }
-        const html = await r.text();
-        const seen = new Set();
-        const eventPattern = /"name"\s*:\s*"([^"]+)"[^}]*?"startDate"\s*:\s*"([^"]+)"/g;
-        let match, found = 0;
-        while ((match = eventPattern.exec(html)) !== null) {
-          const name = match[1];
-          const d = new Date(match[2]);
-          if (isNaN(d)) continue;
-          const date = toEasternDate(d.toISOString());
-          const key = name.toLowerCase() + '|' + date;
-          if (seen.has(key)) continue;
-          seen.add(key); found++;
-          events.push({
-            name,
-            date,
-            time: d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Detroit' }),
-            venue: room.venue,
-            url: room.url,
-            category: 'Concert / Live Event',
-            source: 'masonic',
-          });
-        }
-        if (!found) errors.push(`${room.venue}: AXS scrape returned 0 events (page may be blocked or changed)`);
-      } catch(e) { errors.push(`${room.venue}: ${e.message}`); }
-    }));
-    return { events, error: errors.length ? errors.join('; ') : null };
+    if (!SG_CLIENT_ID) return { events: [], error: 'SEATGEEK_CLIENT_ID not set in Netlify env vars' };
+    try {
+      const venues = await getSeatGeekMasonicVenues();
+      if (!venues.length) return { events: [], error: 'SeatGeek found no Masonic venue in Detroit' };
+      const today = detroitToday();
+      const end = new Date(today); end.setDate(end.getDate()+EVENT_DAYS);
+      const events = [];
+      const errors = [];
+      await Promise.all(venues.map(async v => {
+        try {
+          for (let page = 1; page <= 3; page++) {
+            const data = await sgGet('events', {
+              'venue.id': String(v.id),
+              'datetime_local.gte': ymd(today),
+              'datetime_local.lte': ymd(end) + 'T23:59:59',
+              per_page: '100', page: String(page), sort: 'datetime_local.asc',
+            });
+            (data.events || []).forEach(e => {
+              if (e.date_tbd || !e.datetime_local) return; // no date yet — nothing to show
+              events.push({
+                name: e.title || e.short_title || 'Masonic event',
+                date: e.datetime_local.substring(0,10),
+                time: e.time_tbd ? 'TBA' : e.datetime_local.substring(11,16),
+                venue: v.room,
+                url: e.url || '',
+                category: 'Concert / Live Event',
+                source: 'masonic',
+              });
+            });
+            const total = data.meta?.total || 0;
+            if (page * 100 >= total) break;
+          }
+        } catch(e) { errors.push(`${v.room}: ${e.message}`); }
+      }));
+      return { events, error: errors.length ? errors.join('; ') : null };
+    } catch(e) { return { events: [], error: e.message }; }
   }
 
   // Weekly Masonic list — saved by masonic-events.js (blob store "motorburger-masonic").
-  // The weekly run that visits the Masonic site POSTs its results there, because AXS
-  // blocks scraping from Netlify. Merged into the events feed below, so it shows on the
-  // owner dashboard AND on the staff portal's today's-events card at punch-in.
+  // Kept as a manual backup: anything POSTed there is merged in too (deduped against
+  // SeatGeek). Shows on the owner dashboard AND the staff portal's today's-events card.
   async function getSavedMasonicEvents() {
     try {
       const { getStore, connectLambda } = require('@netlify/blobs');
@@ -399,7 +418,7 @@ exports.handler = async function (event) {
       getTicketmasterEvents(), getMasonicEvents(), getSavedMasonicEvents(), getTripleseatEvents(),
     ]);
     // Dedupe on a normalized name (letters/numbers only) + date, so the same show listed
-    // on Ticketmaster, AXS, and the weekly Masonic list isn't printed twice — but a
+    // on Ticketmaster, SeatGeek, and the saved Masonic list isn't printed twice — but a
     // same-named show on another date still shows. Ticketmaster wins (it has the ticket link).
     const norm = s => String(s||'').toLowerCase().replace(/[^a-z0-9]+/g,'');
     const keyOf = e => norm(e.name)+'|'+e.date;
@@ -412,22 +431,21 @@ exports.handler = async function (event) {
     merged.push(...tripleseat.events); // private events — no dedupe needed against public shows
     merged.sort((a,b) => (a.date||'').localeCompare(b.date||''));
 
-    // The AXS scrape is blocked from Netlify, so its error is expected noise whenever the
-    // weekly list is fresh. If the weekly list goes stale (>10 days), surface that instead.
+    // SeatGeek is now the main Masonic source. Only report an error when it failed AND
+    // there's no fresh (≤10 days) manually saved list to fall back on.
     const savedAgeDays = savedMasonic.updatedAt ? (Date.now() - new Date(savedMasonic.updatedAt)) / 86400000 : null;
     const savedFresh = savedMasonic.events.length > 0 && savedAgeDays !== null && savedAgeDays <= 10;
     let masonicError = masonic.error;
+    if (masonicError && savedFresh) masonicError = null;
     if (savedMasonic.error) masonicError = (masonicError ? masonicError + '; ' : '') + `Saved Masonic list: ${savedMasonic.error}`;
-    else if (savedFresh) masonicError = null;
-    else if (savedMasonic.events.length > 0 && savedAgeDays !== null) {
-      masonicError = (masonicError ? masonicError + '; ' : '') + `Saved Masonic list is ${Math.round(savedAgeDays)} days old`;
-    }
 
     return {
       eventDays: EVENT_DAYS,
       events: merged,
+      masonicSource: 'seatgeek',
       masonicScraped: masonic.events.length > 0,
       masonicCount: masonic.events.length + savedMasonic.events.length,
+      masonicSeatGeekCount: masonic.events.length,
       masonicSavedCount: savedMasonic.events.length,
       masonicSavedUpdatedAt: savedMasonic.updatedAt,
       ticketmasterCount: tm.events.length,
@@ -532,9 +550,21 @@ exports.handler = async function (event) {
     const isPrep = params.prep==="true";
     const isEvents = params.events==="true";
     const isTsDebug = params.tsdebug==="true"; // one-off diagnostic: raw Tripleseat sites/locations/events response, to find why events search returns 0
+    const isSgDebug = params.sgdebug==="true"; // diagnostic: which Masonic venues SeatGeek found + the Masonic events it returned
     const debugDate = params.debugDate; // e.g. ?debugDate=2026-07-01 — diagnostic: see exactly which line items matched/missed a protein type that day
 
     const isTsReset = params.tsreset==="true"; // clears the blob-stored Tripleseat token so a freshly-pasted env var refresh token takes effect again
+
+    if (isSgDebug) {
+      if (!SG_CLIENT_ID) return { statusCode:200, headers, body:JSON.stringify({ error: 'SEATGEEK_CLIENT_ID not set in Netlify env vars' }) };
+      try {
+        const venues = await getSeatGeekMasonicVenues();
+        const m = await getMasonicEvents();
+        return { statusCode:200, headers, body:JSON.stringify({ venues, eventCount: m.events.length, error: m.error, events: m.events }) };
+      } catch(e) {
+        return { statusCode:200, headers, body:JSON.stringify({ error: e.message }) };
+      }
+    }
 
     if (isTsReset) {
       try {
